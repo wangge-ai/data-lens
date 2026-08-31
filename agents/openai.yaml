@@ -1,0 +1,7 @@
+interface:
+  display_name: "Data Lens"
+  short_description: "面向智能体的证据型多源数据分析与可追溯交付"
+  default_prompt: "使用 $data-lens 分析这些资料，先判断问题、资料结构与证据边界，再选择方法并生成可追溯结果。"
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,52 @@
+{
+  "contract": "corpus_lens_operational_facts/1.0",
+  "time_contract": {
+    "platform_daily": "business_date",
+    "promotion": "promotion_date",
+    "inventory": "snapshot_date",
+    "files": "collection_date"
+  },
+  "periods": [
+    {"id": "earlier", "start": "2026-07-01", "end": "2026-07-03"},
+    {"id": "later", "start": "2026-07-04", "end": "2026-07-06"}
+  ],
+  "change_candidate_threshold": 0.15,
+  "platform_daily": [
+    {"business_date": "2026-07-01", "platform": "平台A", "orders": 100, "paid_amount": 5000, "promo_spend": 1000},
+    {"business_date": "2026-07-02", "platform": "平台A", "orders": 100, "paid_amount": 5000, "promo_spend": 1000},
+    {"business_date": "2026-07-03", "platform": "平台A", "orders": 100, "paid_amount": 5000, "promo_spend": 1000},
+    {"business_date": "2026-07-04", "platform": "平台A", "orders": 80, "paid_amount": 4400, "promo_spend": 900},
+    {"business_date": "2026-07-05", "platform": "平台A", "orders": 80, "paid_amount": 4400, "promo_spend": 900},
+    {"business_date": "2026-07-06", "platform": "平台A", "orders": 80, "paid_amount": 4400, "promo_spend": 900},
+    {"business_date": "2026-07-01", "platform": "平台B", "orders": 50, "paid_amount": 3000},
+    {"business_date": "2026-07-02", "platform": "平台B", "orders": 50, "paid_amount": 3000},
+    {"business_date": "2026-07-03", "platform": "平台B", "orders": 50, "paid_amount": 3000},
+    {"business_date": "2026-07-04", "platform": "平台B", "orders": 60, "paid_amount": 3600},
+    {"business_date": "2026-07-05", "platform": "平台B", "orders": 60, "paid_amount": 3600},
+    {"business_date": "2026-07-06", "platform": "平台B", "orders": 60, "paid_amount": 3600}
+  ],
+  "store_period": [
+    {"period": "earlier", "platform": "平台A", "entity_id": "S1", "orders": 20, "paid_amount": 1000},
+    {"period": "earlier", "platform": "平台A", "entity_id": "S1", "orders": 10, "paid_amount": 500},
+    {"period": "later", "platform": "平台A", "entity_id": "S1", "orders": 24, "paid_amount": 1200},
+    {"period": "earlier", "platform": "平台A", "entity_id": "S2", "orders": 8, "paid_amount": 400},
+    {"period": "later", "platform": "平台A", "entity_id": "S3", "orders": 6, "paid_amount": 300}
+  ],
+  "product_period": [],
+  "promo_daily": [
+    {"promotion_date": "2026-07-01", "platform": "平台A", "promo_spend": 1000, "clicks": 300},
+    {"promotion_date": "2026-07-04", "platform": "平台A", "promo_spend": 900, "clicks": 280}
+  ],
+  "inventory_snapshot": [
+    {"snapshot_date": "2026-07-03", "platform": "平台A", "source_family": "仓库1", "sku_count": 100, "available_stock": 1000},
+    {"snapshot_date": "2026-07-06", "platform": "平台A", "source_family": "仓库1", "sku_count": 70, "available_stock": 600}
+  ],
+  "fulfillment_daily": [
+    {"business_date": "2026-07-01", "platform": "平台A", "shipped_orders": 95, "delayed_orders": 5},
+    {"business_date": "2026-07-04", "platform": "平台A", "shipped_orders": 70, "delayed_orders": 10}
+  ],
+  "coverage": [
+    {"collection_date": "2026-07-01", "family": "orders", "file_count": 1, "row_count": 100, "schema_fingerprint": "v1"},
+    {"collection_date": "2026-07-04", "family": "orders", "file_count": 1, "row_count": 180, "schema_fingerprint": "v2"}
+  ]
+}

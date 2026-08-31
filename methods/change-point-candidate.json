@@ -1,0 +1,18 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.change_point_candidate",
+  "version": "1.0.0",
+  "status": "experimental",
+  "name": "变化点候选",
+  "question_types": ["exploration", "comparison"],
+  "accepted_units": ["time_ordered_table_row"],
+  "input_shapes": ["csv", "tsv"],
+  "eligibility_checks": ["time field parses to comparable dates", "two minimum segments contain eligible numeric values"],
+  "human_gates": ["confirm time semantics and inspect alternative explanations"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/tabular_analysis.py change", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["candidate split", "segment counts", "segment means", "standardized mean shift"],
+  "evidence_requirements": ["source file hash", "time field", "metric field", "eligible period"],
+  "allowed_claims": ["candidate split maximizes the declared exploratory mean-shift score"],
+  "forbidden_claims": ["candidate proves a structural regime or its cause", "short window proves seasonality"],
+  "validation": {"status": "fixture_only", "fixtures": ["tests/fixtures/r_numeric.csv"]}
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/adoption-ledger.schema.json",
+  "title": "Data Lens Adoption Ledger 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "request", "evidence_index", "candidates", "summary", "completion_status"],
+  "properties": {
+    "contract_version": {"const": "data-lens-adoption-ledger/1.0"},
+    "request": {
+      "type": "object",
+      "required": ["attempted", "succeeded"],
+      "properties": {
+        "attempted": {"type": "boolean"},
+        "succeeded": {"type": "boolean"},
+        "provider": {"type": ["string", "null"]},
+        "request_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "evidence_index": {"type": "object"},
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["candidate_id", "contract_valid", "evidence_valid", "evidence_refs", "adopted"],
+        "properties": {
+          "candidate_id": {"type": "string", "minLength": 1},
+          "contract_valid": {"type": "boolean"},
+          "contract_errors": {"type": "array", "items": {"type": "string"}},
+          "evidence_valid": {"type": "boolean"},
+          "evidence_errors": {"type": "array", "items": {"type": "string"}},
+          "evidence_refs": {"type": "array", "items": {"type": "string"}},
+          "adopted": {"type": "boolean"},
+          "rejection_reason": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["candidate_count", "adopted_count", "core_question_answered"],
+      "properties": {
+        "candidate_count": {"type": "integer", "minimum": 0},
+        "adopted_count": {"type": "integer", "minimum": 0},
+        "core_question_answered": {"type": "boolean"}
+      }
+    },
+    "completion_status": {"enum": ["complete", "preliminary", "partial", "core_question_unanswered"]}
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "fixture_version": "1.0",
+  "case": "sanitized regression shape from a real mixed-folder run",
+  "goal": "按资料家族读取正文、表格和图片，分别做教程拆解、项目方法提炼、写作规律、自动化流程和电商视觉分析，找出家族内部共性、差异、版本关系、可复用方法及跨家族真实关联",
+  "inventory": {
+    "inventory_version": "1.1",
+    "summary": {
+      "canonical_items": 154,
+      "by_evidence_role": {
+        "content_text": 58,
+        "tabular_data": 7,
+        "unclassified": 6,
+        "visual_layout": 83
+      },
+      "by_container_type": {
+        "file": 6,
+        "image": 83,
+        "table": 3,
+        "text_document": 58,
+        "workbook": 4
+      }
+    },
+    "files": []
+  },
+  "expected": {
+    "primary_route": "mixed_corpus",
+    "comparison_unit": "family_specific",
+    "sampling_strategy": "family_stratified",
+    "route_confidence": "high"
+  }
+}

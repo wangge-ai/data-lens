@@ -1,0 +1,18 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.table_profile",
+  "version": "1.0.0",
+  "status": "validated",
+  "name": "通用表格画像",
+  "question_types": ["inventory", "description"],
+  "accepted_units": ["table_row"],
+  "input_shapes": ["csv", "tsv"],
+  "eligibility_checks": ["header is non-empty and unique", "at least one data row is present"],
+  "human_gates": ["confirm inferred data types and missing-value meaning before interpretation"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/tabular_analysis.py profile", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["row and column count", "missing and zero count", "unique count", "numeric distribution summary"],
+  "evidence_requirements": ["source file hash", "column name", "eligible row count"],
+  "allowed_claims": ["deterministic profile of supplied eligible rows"],
+  "forbidden_claims": ["inferred type is a confirmed business definition", "missing values are zeros"],
+  "validation": {"status": "regression_tested", "fixtures": ["tests/fixtures/r_numeric.csv"]}
+}

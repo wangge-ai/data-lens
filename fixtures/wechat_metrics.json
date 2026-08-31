@@ -1,0 +1,15 @@
+{
+  "wechat_metrics_version": "1.0",
+  "daily_channel": [
+    {"date": "2026-01-01", "channel": "全部", "readers": 1000},
+    {"date": "2026-01-01", "channel": "推荐", "readers": 700}
+  ],
+  "daily_interactions": [
+    {"date": "2026-01-01", "shares": 20, "favorites": 12, "published_articles": 1}
+  ],
+  "article_source": [
+    {"source_channel": "全部", "publish_date": "2026-01-01", "source_title": "商品数据分析 SOP（附模板）", "readers": 1000},
+    {"source_channel": "推荐", "publish_date": "2026-01-01", "source_title": "商品数据分析 SOP（附模板）", "readers": 700},
+    {"source_channel": "推荐", "publish_date": "2026-01-02", "source_title": "五个 AI 工具", "readers": 80}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.local_vector_retrieval",
+  "version": "1.0.0",
+  "status": "experimental",
+  "name": "本地向量候选召回",
+  "question_types": ["retrieval", "exploration"],
+  "accepted_units": ["text_chunk"],
+  "input_shapes": ["text_corpus"],
+  "eligibility_checks": ["source chunks retain exact locators", "index can be rebuilt from locked source"],
+  "human_gates": ["return retrieved candidates to source before adoption"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/local_vector_index.py", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["ranked retrieval candidates", "source hashes", "text locators"],
+  "evidence_requirements": ["relative source path", "source hash", "character range"],
+  "allowed_claims": ["these chunks are retrieval candidates for the query"],
+  "forbidden_claims": ["similarity proves truth or importance", "hits represent full corpus coverage", "index is a source of truth"],
+  "validation": {"status": "fixture_only", "fixtures": ["fixtures/articles"]}
+}

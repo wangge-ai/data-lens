@@ -1,0 +1,18 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.inventory_profile",
+  "version": "1.0.0",
+  "status": "validated",
+  "name": "资料清点与分析画像",
+  "question_types": ["inventory", "description"],
+  "accepted_units": ["source_container"],
+  "input_shapes": ["file", "directory", "mixed_corpus"],
+  "eligibility_checks": ["source path exists", "source is readable without mutation"],
+  "human_gates": ["confirm ambiguous version families before using them as independent units"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/inventory_inputs.py", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["inventory", "duplicate groups", "evidence lane candidates", "readability diagnostics"],
+  "evidence_requirements": ["source path", "source hash", "container metadata"],
+  "allowed_claims": ["what was supplied and mechanically observed"],
+  "forbidden_claims": ["file count proves semantic coverage", "unreadable content does not exist"],
+  "validation": {"status": "regression_tested", "fixtures": ["fixtures/articles", "fixtures/mixed_corpus_154.json"]}
+}

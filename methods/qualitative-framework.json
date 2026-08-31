@@ -1,0 +1,18 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.qualitative_framework",
+  "version": "1.0.0",
+  "status": "validated",
+  "name": "证据型质性框架分析",
+  "question_types": ["description", "comparison", "explanation"],
+  "accepted_units": ["article", "comment", "case", "claim"],
+  "input_shapes": ["text_corpus", "mixed_text_evidence"],
+  "eligibility_checks": ["analysis unit is defined", "selected text is semantically reviewed", "source evidence remains locatable"],
+  "human_gates": ["confirm coding dimensions", "review counterexamples and missing evidence"],
+  "implementation": {"runtime": "hybrid", "entrypoint": "scripts/prepare_semantic_review_packets.py", "network_policy": "explicit_authorization_required", "optional_dependencies": []},
+  "outputs": ["case by dimension matrix", "candidate findings", "counterexamples", "evidence gaps"],
+  "evidence_requirements": ["verified text spans", "one atomic fact per evidence card"],
+  "allowed_claims": ["observed patterns and bounded interpretations in the reviewed corpus"],
+  "forbidden_claims": ["frequency proves truth", "single-author repetition is independent corroboration", "unsupported motive or causality"],
+  "validation": {"status": "regression_tested", "fixtures": ["fixtures/articles"]}
+}

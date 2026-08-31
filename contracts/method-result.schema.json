@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/method-result.schema.json",
+  "title": "Data Lens Method Result 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "method_id", "method_version", "status", "results", "diagnostics"],
+  "properties": {
+    "contract_version": {"const": "data-lens-method-result/1.0"},
+    "method_id": {"type": "string", "minLength": 1},
+    "method_version": {"type": "string", "minLength": 1},
+    "status": {"enum": ["succeeded", "failed", "ineligible"]},
+    "results": {"type": "array"},
+    "diagnostics": {"type": "array"},
+    "boundaries": {"type": "array", "items": {"type": "string"}}
+  }
+}

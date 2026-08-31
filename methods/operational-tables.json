@@ -1,0 +1,18 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.operational_tables",
+  "version": "1.0.0",
+  "status": "validated",
+  "name": "重复经营表格分析",
+  "question_types": ["description", "comparison", "exploration", "decision"],
+  "accepted_units": ["business_date_platform", "entity_date"],
+  "input_shapes": ["repeated_workbooks", "csv_exports", "normalized_facts"],
+  "eligibility_checks": ["date roles are distinguished", "metric numerator and denominator are declared", "duplicate keys and schema drift pass quality gates"],
+  "human_gates": ["confirm metric mapping", "confirm platform comparability", "review anomaly candidates"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/analyze_operational_facts.py", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["normalized facts", "reconciled metrics", "platform comparisons", "change candidates", "filterable workbook"],
+  "evidence_requirements": ["source row or cell location", "metric definition", "quality-gate result"],
+  "allowed_claims": ["reconciled observations and bounded changes in the supplied period"],
+  "forbidden_claims": ["change point proves a cause", "missing entity means zero", "incompatible platform metrics may be merged"],
+  "validation": {"status": "regression_tested", "fixtures": ["fixtures/operational_facts.json"]}
+}

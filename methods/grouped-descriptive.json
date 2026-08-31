@@ -1,0 +1,18 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.grouped_descriptive",
+  "version": "1.0.0",
+  "status": "validated",
+  "name": "分组描述统计",
+  "question_types": ["description", "comparison"],
+  "accepted_units": ["table_row"],
+  "input_shapes": ["csv", "tsv"],
+  "eligibility_checks": ["group keys exist", "metrics contain eligible numeric values"],
+  "human_gates": ["confirm group comparability and metric units"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/tabular_analysis.py group", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["group row count", "metric valid count", "sum", "mean", "minimum", "maximum"],
+  "evidence_requirements": ["source file hash", "group keys", "metric definitions"],
+  "allowed_claims": ["descriptive differences among declared groups"],
+  "forbidden_claims": ["group difference proves cause", "incomparable groups may be merged"],
+  "validation": {"status": "regression_tested", "fixtures": ["tests/fixtures/r_numeric.csv"]}
+}

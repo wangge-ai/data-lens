@@ -1,0 +1,18 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.multimodal_inventory",
+  "version": "1.0.0",
+  "status": "experimental",
+  "name": "多模态证据清点",
+  "question_types": ["inventory", "description"],
+  "accepted_units": ["image", "pdf_page", "audio_segment", "video_segment"],
+  "input_shapes": ["image_files", "pdf_files", "audio_files", "video_files"],
+  "eligibility_checks": ["file is readable", "required evidence locator can be produced"],
+  "human_gates": ["semantic review before content claims"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/multimodal_inventory.py", "network_policy": "deny", "optional_dependencies": ["Pillow", "ffprobe"]},
+  "outputs": ["media inventory", "metadata", "required locator", "processing-state gap"],
+  "evidence_requirements": ["source hash", "page, region, or timestamp for semantic claims"],
+  "allowed_claims": ["observed metadata and explicitly reviewed multimodal content"],
+  "forbidden_claims": ["metadata or OCR equals semantic review", "unlocated visual or media impression is evidence"],
+  "validation": {"status": "fixture_only", "fixtures": ["tests/fixtures"]}
+}

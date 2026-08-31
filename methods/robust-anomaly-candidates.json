@@ -1,0 +1,18 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.robust_anomaly_candidates",
+  "version": "1.0.0",
+  "status": "validated",
+  "name": "稳健异常候选",
+  "question_types": ["exploration"],
+  "accepted_units": ["table_row"],
+  "input_shapes": ["csv", "tsv"],
+  "eligibility_checks": ["at least five eligible numeric values", "metric unit is stable"],
+  "human_gates": ["review every candidate in source context"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/tabular_analysis.py anomaly", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["median", "MAD", "robust z score", "candidate row locator"],
+  "evidence_requirements": ["source file hash", "row number", "metric value"],
+  "allowed_claims": ["candidate is unusual under the declared robust rule"],
+  "forbidden_claims": ["candidate is automatically an error, fraud, or bad outcome"],
+  "validation": {"status": "regression_tested", "fixtures": ["tests/fixtures/r_numeric.csv"]}
+}
