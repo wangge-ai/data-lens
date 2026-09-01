@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 authors = [
-  {name = "limuxi-art"},
+  {name = "Wangge"},
 ]
 keywords = ["agent-skill", "data-analysis", "evidence", "multimodal", "r"]
 classifiers = [

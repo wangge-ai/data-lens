@@ -4,6 +4,8 @@ Data Lens is an evidence-grounded data-analysis Skill for AI agents. It helps Co
 
 Data Lens is a Skill, not a web application. It does not ship a browser workbench, API server, project database, provider console, or automatic external-model calls.
 
+Maintained by **Wangge**. The intended public home is `wangge-ai/data-lens`.
+
 ## What it analyzes
 
 - structured tables and repeated operational exports;
