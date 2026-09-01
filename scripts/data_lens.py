@@ -21,6 +21,8 @@ COMMANDS = {
     "multimodal-inventory": "multimodal_inventory.py",
     "ocr": "ocr_evidence.py",
     "pdf": "pdf_evidence.py",
+    "video": "video_evidence.py",
+    "transcribe": "transcribe_media.py",
     "r": "r_method_runner.py",
     "validate-adoption": "validate_adoption_ledger.py",
     "validate-analysis": "validate_deep_analysis.py",

@@ -24,7 +24,9 @@ from plan_analysis import build_plan  # noqa: E402
 from r_method_runner import probe, validate_result  # noqa: E402
 from select_samples import build_sample  # noqa: E402
 from tabular_analysis import anomaly_candidates, change_candidate, grouped, profile, read_table  # noqa: E402
+from transcribe_media import build_transcription_evidence, clip_bounds  # noqa: E402
 from validate_adoption_ledger import validate as validate_adoption  # noqa: E402
+from video_evidence import build_video_evidence, evenly_spaced_timestamps, parse_duration_ms, parse_timestamp_spec  # noqa: E402
 
 
 ONE_PIXEL_PNG = base64.b64decode(
@@ -292,6 +294,157 @@ class MultimodalTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "between 1 and 30"):
                 build_pdf_evidence(source, root / "other", max_pages=31, pdftoppm="synthetic", pdfinfo="synthetic")
 
+    def test_video_timestamps_are_bounded_and_distributed(self) -> None:
+        fixture = (ROOT / "fixtures" / "video" / "ffprobe-ten-seconds.json").read_text(encoding="utf-8")
+        self.assertEqual(parse_duration_ms(fixture), 10_000)
+        selected = evenly_spaced_timestamps(10_000, 4)
+        self.assertEqual(selected, [2000, 4000, 6000, 8000])
+        self.assertNotEqual(selected, [0, 1, 2, 3])
+        self.assertEqual(parse_timestamp_spec("0.5,8.25", 10_000, 3), [500, 8250])
+        with self.assertRaisesRegex(ValueError, "maximum"):
+            parse_timestamp_spec("1,2,3,4", 10_000, 3)
+
+    def test_video_frame_pipeline_keeps_timestamp_hashes_and_failures(self) -> None:
+        probe_text = (ROOT / "fixtures" / "video" / "ffprobe-ten-seconds.json").read_text(encoding="utf-8")
+        extraction_calls: dict[int, int] = {}
+
+        def fake_runner(command, **kwargs):
+            if command[0] == "synthetic-ffprobe":
+                return subprocess.CompletedProcess(command, 0, probe_text, "")
+            timestamp_ms = round(float(command[command.index("-ss") + 1]) * 1000)
+            extraction_calls[timestamp_ms] = extraction_calls.get(timestamp_ms, 0) + 1
+            if timestamp_ms == 5000:
+                return subprocess.CompletedProcess(command, 8, "", "synthetic frame failure")
+            Path(command[-1]).write_bytes(ONE_PIXEL_PNG)
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "synthetic.mp4"
+            source_bytes = b"synthetic video fixture shape"
+            source.write_bytes(source_bytes)
+            payload = build_video_evidence(
+                source,
+                root / "evidence",
+                timestamp_spec="1,5,9",
+                max_frames=3,
+                runner=fake_runner,
+                ffmpeg="synthetic-ffmpeg",
+                ffprobe="synthetic-ffprobe",
+            )
+            self.assertEqual(source.read_bytes(), source_bytes)
+        result = payload["results"][0]
+        self.assertEqual(result["completion_status"], "partial")
+        self.assertTrue(result["source_unchanged"])
+        self.assertEqual(extraction_calls, {1000: 1, 5000: 1, 9000: 1})
+        self.assertEqual(result["frames"][0]["source_locator"]["timestamp_ms"], 1000)
+        self.assertTrue(result["frames"][0]["frame_sha256"])
+        self.assertEqual(result["failure_ledger"][0]["retry_status"], "not_retried")
+        self.assertEqual(result["semantic_review_status"], "not_reviewed")
+
+    def test_transcription_requires_bounded_clip_and_local_checkpoint(self) -> None:
+        self.assertEqual(clip_bounds(10_000, 1, None, None), (0, 10_000))
+        with self.assertRaisesRegex(ValueError, "explicit start_ms"):
+            clip_bounds(120_001, 2, None, None)
+        with self.assertRaisesRegex(ValueError, "supplied together"):
+            clip_bounds(10_000, 1, 0, None)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "synthetic.mp4"
+            source.write_bytes(b"synthetic")
+            with self.assertRaisesRegex(FileNotFoundError, "local Whisper checkpoint"):
+                build_transcription_evidence(
+                    source,
+                    root / "output",
+                    model_checkpoint=root / "missing.pt",
+                    ffmpeg="synthetic",
+                    ffprobe="synthetic",
+                    whisper="synthetic",
+                )
+
+    def test_transcription_uses_explicit_local_model_and_time_locators(self) -> None:
+        probe_text = (ROOT / "fixtures" / "video" / "ffprobe-ten-seconds.json").read_text(encoding="utf-8")
+        whisper_text = (ROOT / "fixtures" / "video" / "whisper-mixed-zh-en.json").read_text(encoding="utf-8")
+        observed_whisper_commands: list[list[str]] = []
+
+        def fake_runner(command, **kwargs):
+            if command[0] == "synthetic-ffprobe":
+                return subprocess.CompletedProcess(command, 0, probe_text, "")
+            if command[0] == "synthetic-ffmpeg":
+                Path(command[-1]).write_bytes(b"synthetic bounded wav")
+                return subprocess.CompletedProcess(command, 0, "", "")
+            observed_whisper_commands.append(command)
+            output_dir = Path(command[command.index("--output_dir") + 1])
+            (output_dir / "bounded-clip.json").write_text(whisper_text, encoding="utf-8")
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "synthetic.mp4"
+            model = root / "local-model.pt"
+            source.write_bytes(b"synthetic video")
+            model.write_bytes(b"synthetic local checkpoint")
+            payload = build_transcription_evidence(
+                source,
+                root / "evidence",
+                model_checkpoint=model,
+                start_ms=1000,
+                end_ms=9000,
+                max_minutes=1,
+                runner=fake_runner,
+                ffmpeg="synthetic-ffmpeg",
+                ffprobe="synthetic-ffprobe",
+                whisper="synthetic-whisper",
+            )
+            self.assertEqual(payload["status"], "succeeded")
+            result = payload["results"][0]
+            self.assertEqual(result["clip_locator"]["start_ms"], 1000)
+            self.assertEqual(result["transcript"]["segments"][0]["start_ms"], 1250)
+            self.assertEqual(result["transcript"]["segments"][0]["words"][0]["start_ms"], 1250)
+            self.assertEqual(result["model_checkpoint_source"], "explicit_local_path")
+            self.assertFalse(result["network_download_requested"])
+            self.assertEqual(result["speaker_review_status"], "not_reviewed")
+            self.assertEqual(result["adoption_status"], "not_adopted")
+            self.assertEqual(len(observed_whisper_commands), 1)
+            command = observed_whisper_commands[0]
+            self.assertEqual(Path(command[command.index("--model") + 1]), model.resolve())
+
+    def test_transcription_failure_is_not_retried(self) -> None:
+        probe_text = (ROOT / "fixtures" / "video" / "ffprobe-ten-seconds.json").read_text(encoding="utf-8")
+        whisper_calls = 0
+
+        def fake_runner(command, **kwargs):
+            nonlocal whisper_calls
+            if command[0] == "synthetic-ffprobe":
+                return subprocess.CompletedProcess(command, 0, probe_text, "")
+            if command[0] == "synthetic-ffmpeg":
+                Path(command[-1]).write_bytes(b"synthetic bounded wav")
+                return subprocess.CompletedProcess(command, 0, "", "")
+            whisper_calls += 1
+            return subprocess.CompletedProcess(command, 7, "", "synthetic Whisper failure")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "synthetic.mp4"
+            model = root / "local-model.pt"
+            source.write_bytes(b"synthetic video")
+            model.write_bytes(b"synthetic model")
+            payload = build_transcription_evidence(
+                source,
+                root / "evidence",
+                model_checkpoint=model,
+                max_minutes=1,
+                runner=fake_runner,
+                ffmpeg="synthetic-ffmpeg",
+                ffprobe="synthetic-ffprobe",
+                whisper="synthetic-whisper",
+            )
+        result = payload["results"][0]
+        self.assertEqual(payload["status"], "failed")
+        self.assertEqual(whisper_calls, 1)
+        self.assertEqual(result["failure_ledger"][0]["stage"], "transcription")
+        self.assertEqual(result["failure_ledger"][0]["retry_status"], "not_retried")
+
 
 class AdoptionTests(unittest.TestCase):
     def test_request_success_and_adoption_success_are_separate(self) -> None:
@@ -424,6 +577,8 @@ class RepositoryTests(unittest.TestCase):
         self.assertIn("multimodal-inventory", completed.stdout)
         self.assertIn("ocr", completed.stdout)
         self.assertIn("pdf", completed.stdout)
+        self.assertIn("video", completed.stdout)
+        self.assertIn("transcribe", completed.stdout)
 
 
 class RoutingTests(unittest.TestCase):

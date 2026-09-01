@@ -1,0 +1,16 @@
+{
+  "text": "数据分析 Data Lens 保留证据。",
+  "language": "zh",
+  "segments": [
+    {
+      "start": 0.25,
+      "end": 2.75,
+      "text": " 数据分析 Data Lens 保留证据。",
+      "words": [
+        {"word": "数据分析", "start": 0.25, "end": 0.95, "probability": 0.96},
+        {"word": " Data Lens", "start": 1.0, "end": 1.65, "probability": 0.93},
+        {"word": " 保留证据。", "start": 1.7, "end": 2.75, "probability": 0.91}
+      ]
+    }
+  ]
+}

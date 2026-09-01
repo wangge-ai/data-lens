@@ -1,0 +1,18 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.video_frame_evidence",
+  "version": "0.1.0",
+  "status": "experimental",
+  "name": "视频有界抽帧证据",
+  "question_types": ["extraction", "multimodal_preparation"],
+  "accepted_units": ["video_frame"],
+  "input_shapes": ["video_file"],
+  "eligibility_checks": ["source media is readable", "FFmpeg and ffprobe are installed", "frame count and timestamps are bounded"],
+  "human_gates": ["confirm explicit timestamps or bounded sampling strategy", "semantically review frames before visual claims"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/video_evidence.py", "network_policy": "deny", "optional_dependencies": ["FFmpeg"]},
+  "outputs": ["frame PNGs", "source and timestamp locators", "frame hashes", "failure ledger"],
+  "evidence_requirements": ["source media hash", "timestamp in milliseconds", "frame hash"],
+  "allowed_claims": ["the recorded frame was extracted from the declared source timestamp under the declared parameters"],
+  "forbidden_claims": ["bounded frames represent the full video", "frame extraction is semantic review", "a failed timestamp may be silently omitted"],
+  "validation": {"status": "fixture_only", "fixtures": ["fixtures/video/ffprobe-ten-seconds.json"]}
+}

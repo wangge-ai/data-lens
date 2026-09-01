@@ -7,3 +7,5 @@ When adding a fixture, state its synthetic or redistributable provenance and kee
 `ocr/*.tsv` contains hand-authored synthetic Tesseract-shaped output for the invented text “数据分析 Data Lens / 证据可定位”. It contains no captured screenshot or copied OCR result.
 
 `pdf/*.txt` contains hand-authored synthetic Poppler-shaped metadata. No source PDF or rendered page from a user document is included.
+
+`video/*.json` contains hand-authored synthetic ffprobe and Whisper-shaped output for invented media. It includes no user audio, video, frames, transcript, or model checkpoint.

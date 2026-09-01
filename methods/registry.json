@@ -12,6 +12,8 @@
     {"method_id": "data_lens.multimodal_inventory", "version": "1.0.0", "manifest": "multimodal-inventory.json"},
     {"method_id": "data_lens.tesseract_ocr", "version": "0.1.0", "manifest": "tesseract-ocr.json"},
     {"method_id": "data_lens.pdf_page_ocr", "version": "0.1.0", "manifest": "pdf-page-ocr.json"},
+    {"method_id": "data_lens.video_frame_evidence", "version": "0.1.0", "manifest": "video-frame-evidence.json"},
+    {"method_id": "data_lens.local_whisper_transcription", "version": "0.1.0", "manifest": "local-whisper-transcription.json"},
     {"method_id": "data_lens.local_vector_retrieval", "version": "1.0.0", "manifest": "local-vector-retrieval.json"},
     {"method_id": "data_lens.r_descriptive_summary", "version": "0.1.0", "manifest": "r-descriptive-summary.json"}
   ]

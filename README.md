@@ -37,6 +37,8 @@ Useful local commands:
 python scripts/data_lens.py capabilities
 python scripts/data_lens.py ocr <image> --output ocr-result.json
 python scripts/data_lens.py pdf <file.pdf> --output-dir pdf-evidence
+python scripts/data_lens.py video <video> --output-dir video-evidence
+python scripts/data_lens.py transcribe <media> --output-dir transcript-evidence --model-checkpoint <local.pt>
 python scripts/data_lens.py test
 python scripts/data_lens.py inventory <source> --output inventory.json
 python scripts/data_lens.py plan --goal "your original question" --inventory inventory.json --output plan.json
@@ -47,6 +49,8 @@ python scripts/data_lens.py plan --goal "your original question" --inventory inv
 The default path uses the Python standard library. Data Lens detects but never auto-installs optional runtimes such as R, Poppler, Tesseract, ffprobe, Pillow, sentence-transformers, Chroma, or Qdrant clients. Capability reports distinguish installed dependencies from wired, fixture-validated, and production-ready workflows. Optional capabilities must degrade visibly when unavailable.
 
 PDF preparation is bounded and traceable: it records the source hash, page number, rendered-page hash, optional OCR hash, and all non-retried failures. Rendering or OCR completion is not semantic review.
+
+Video preparation samples bounded timestamps across the duration and records source/timestamp/frame hashes. Optional Whisper transcription requires an existing local checkpoint and a bounded clip; it never downloads or silently substitutes a model. Frames and transcripts remain unreviewed evidence candidates until an agent or human verifies their meaning.
 
 ## Evidence rule
 
