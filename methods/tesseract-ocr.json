@@ -1,7 +1,7 @@
 {
   "contract_version": "data-lens-method-manifest/1.0",
   "method_id": "data_lens.tesseract_ocr",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "status": "experimental",
   "name": "本地 Tesseract OCR 证据提取",
   "question_types": ["extraction", "multimodal_preparation"],
@@ -14,5 +14,5 @@
   "evidence_requirements": ["source hash", "full-frame or pixel-region locator", "OCR language and PSM", "raw candidate retained"],
   "allowed_claims": ["Tesseract produced this text candidate from the located source pixels with the recorded confidence"],
   "forbidden_claims": ["OCR text is semantically reviewed", "the highest-confidence candidate is automatically correct", "OCR completion adopts a finding"],
-  "validation": {"status": "fixture_only", "fixtures": ["fixtures/ocr/mixed_chi_eng_psm6.tsv", "fixtures/ocr/mixed_chi_eng_psm11.tsv"]}
+  "validation": {"status": "fixture_and_real_shape", "fixtures": ["fixtures/ocr/mixed_chi_eng_psm6.tsv", "fixtures/ocr/mixed_chi_eng_psm11.tsv", "fixtures/ocr/quote-token.tsv"]}
 }

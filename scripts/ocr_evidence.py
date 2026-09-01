@@ -16,7 +16,7 @@ from multimodal_inventory import image_size
 
 
 METHOD_ID = "data_lens.tesseract_ocr"
-METHOD_VERSION = "0.1.0"
+METHOD_VERSION = "0.1.1"
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
 ALLOWED_PSMS = {3, 4, 6, 11, 12, 13}
 DEFAULT_PSMS = (6, 11)
@@ -41,7 +41,10 @@ def _confidence(value: str) -> float:
 def parse_tsv(text: str) -> dict[str, Any]:
     if not text.strip():
         return {"raw_text": "", "words": [], "lines": [], "metrics": {"word_count": 0, "character_count": 0, "mean_confidence": None}}
-    reader = csv.DictReader(io.StringIO(text), delimiter="\t")
+    # Tesseract TSV is tab-delimited but does not implement CSV quoting.
+    # A recognized ASCII double quote is ordinary OCR text; allowing csv's
+    # default quote handling can swallow all following TSV rows into one token.
+    reader = csv.DictReader(io.StringIO(text), delimiter="\t", quoting=csv.QUOTE_NONE)
     required = {"level", "page_num", "block_num", "par_num", "line_num", "word_num", "left", "top", "width", "height", "conf", "text"}
     if not reader.fieldnames or required - set(reader.fieldnames):
         missing = sorted(required - set(reader.fieldnames or []))

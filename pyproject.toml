@@ -1,6 +1,6 @@
 [project]
 name = "data-lens-skill"
-version = "0.3.0"
+version = "0.3.1"
 description = "Evidence-grounded data-analysis Skill for AI agents"
 readme = "README.md"
 requires-python = ">=3.10"

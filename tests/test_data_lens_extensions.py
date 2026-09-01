@@ -114,6 +114,12 @@ class MultimodalTests(unittest.TestCase):
         self.assertEqual(parsed["words"][0]["locator"]["bbox"], [20, 20, 80, 32])
         self.assertIsInstance(parsed["metrics"]["mean_confidence"], float)
 
+    def test_tesseract_tsv_literal_quote_does_not_swallow_following_rows(self) -> None:
+        parsed = parse_tsv((ROOT / "fixtures" / "ocr" / "quote-token.tsv").read_text(encoding="utf-8"))
+        self.assertEqual([word["text"] for word in parsed["words"]], ['"', "调查", "证据"])
+        self.assertEqual(parsed["metrics"]["word_count"], 3)
+        self.assertNotIn("\t", parsed["raw_text"])
+
     def test_ocr_execution_retains_bounded_candidates_without_semantic_adoption(self) -> None:
         fixtures = {
             "6": (ROOT / "fixtures" / "ocr" / "mixed_chi_eng_psm6.tsv").read_text(encoding="utf-8"),
