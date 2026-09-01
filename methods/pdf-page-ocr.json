@@ -1,0 +1,18 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.pdf_page_ocr",
+  "version": "0.1.0",
+  "status": "experimental",
+  "name": "PDF 页面渲染与有界 OCR",
+  "question_types": ["extraction", "multimodal_preparation"],
+  "accepted_units": ["pdf_page"],
+  "input_shapes": ["pdf_file"],
+  "eligibility_checks": ["source PDF is readable", "Poppler pdftoppm and pdfinfo are installed", "selected page count is bounded", "Tesseract languages exist when OCR is requested"],
+  "human_gates": ["confirm explicit pages or bounded sampling strategy", "semantically review rendered pages or OCR candidates before content claims"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/pdf_evidence.py", "network_policy": "deny", "optional_dependencies": ["Poppler", "Tesseract when OCR is requested"]},
+  "outputs": ["rendered page PNGs", "PDF and page locators", "rendered and OCR artifact hashes", "bounded OCR outputs", "failure ledger"],
+  "evidence_requirements": ["source PDF hash", "1-based page number", "rendered page hash", "OCR output hash when OCR runs"],
+  "allowed_claims": ["the selected PDF page rendered or produced the recorded OCR candidate under the declared parameters"],
+  "forbidden_claims": ["sampled pages represent the full PDF", "OCR or rendering is semantic review", "a failed page may be silently omitted"],
+  "validation": {"status": "fixture_only", "fixtures": ["fixtures/pdf/pdfinfo-three-pages.txt", "fixtures/ocr/mixed_chi_eng_psm6.tsv"]}
+}

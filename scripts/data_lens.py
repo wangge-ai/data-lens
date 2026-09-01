@@ -20,6 +20,7 @@ COMMANDS = {
     "vector": "local_vector_index.py",
     "multimodal-inventory": "multimodal_inventory.py",
     "ocr": "ocr_evidence.py",
+    "pdf": "pdf_evidence.py",
     "r": "r_method_runner.py",
     "validate-adoption": "validate_adoption_ledger.py",
     "validate-analysis": "validate_deep_analysis.py",

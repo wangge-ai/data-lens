@@ -19,6 +19,7 @@ from detect_capabilities import detect  # noqa: E402
 from local_vector_index import build_index, query_index  # noqa: E402
 from multimodal_inventory import collect  # noqa: E402
 from ocr_evidence import parse_tsv, run_ocr  # noqa: E402
+from pdf_evidence import build_pdf_evidence, page_indices, parse_page_spec, parse_pdfinfo  # noqa: E402
 from plan_analysis import build_plan  # noqa: E402
 from r_method_runner import probe, validate_result  # noqa: E402
 from select_samples import build_sample  # noqa: E402
@@ -176,6 +177,121 @@ class MultimodalTests(unittest.TestCase):
             self.assertIn("must not overwrite", completed.stderr)
             self.assertEqual(source.read_bytes(), ONE_PIXEL_PNG)
 
+    def test_pdf_page_selection_is_bounded_and_not_first_n(self) -> None:
+        self.assertEqual(page_indices(3, 6), [1, 2, 3])
+        selected = page_indices(20, 4)
+        self.assertEqual((selected[0], selected[-1]), (1, 20))
+        self.assertNotEqual(selected, [1, 2, 3, 4])
+        self.assertEqual(parse_page_spec("1,3-4", 20, 4), [1, 3, 4])
+        with self.assertRaisesRegex(ValueError, "maximum"):
+            parse_page_spec("1-5", 20, 4)
+        self.assertEqual(parse_pdfinfo((ROOT / "fixtures" / "pdf" / "pdfinfo-three-pages.txt").read_text(encoding="utf-8")), 3)
+
+    def test_pdf_pipeline_keeps_page_hashes_ocr_and_source_integrity(self) -> None:
+        info_text = (ROOT / "fixtures" / "pdf" / "pdfinfo-three-pages.txt").read_text(encoding="utf-8")
+
+        def fake_runner(command, **kwargs):
+            if command[0] == "synthetic-pdfinfo":
+                return subprocess.CompletedProcess(command, 0, info_text, "")
+            Path(command[-1] + ".png").write_bytes(ONE_PIXEL_PNG)
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        def fake_ocr(source, **kwargs):
+            return {
+                "contract_version": "data-lens-method-result/1.0",
+                "method_id": "data_lens.tesseract_ocr",
+                "method_version": "0.1.0",
+                "status": "succeeded",
+                "results": [{"source_sha256": "synthetic", "semantic_review_status": "not_reviewed"}],
+                "diagnostics": [],
+            }
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "synthetic.pdf"
+            source_bytes = b"%PDF-1.7\nsynthetic fixture shape\n%%EOF\n"
+            source.write_bytes(source_bytes)
+            output = root / "evidence"
+            payload = build_pdf_evidence(
+                source,
+                output,
+                page_spec="1,3",
+                max_pages=2,
+                runner=fake_runner,
+                ocr_function=fake_ocr,
+                pdftoppm="synthetic-pdftoppm",
+                pdfinfo="synthetic-pdfinfo",
+            )
+            self.assertEqual(source.read_bytes(), source_bytes)
+            self.assertEqual(payload["status"], "succeeded")
+            result = payload["results"][0]
+            self.assertTrue(result["source_unchanged"])
+            self.assertEqual(result["selected_pages"], [1, 3])
+            self.assertEqual(result["semantic_review_status"], "not_reviewed")
+            self.assertEqual(result["failure_ledger"], [])
+            self.assertTrue(all(page["pdf_locator"]["source_sha256"] == result["source_sha256"] for page in result["pages"]))
+            self.assertTrue(all(page["rendered_sha256"] for page in result["pages"]))
+            self.assertTrue(all(page["ocr_output_sha256"] for page in result["pages"]))
+            self.assertTrue((output / "pdf-evidence.json").is_file())
+
+    def test_pdf_failures_are_retained_once_without_retry(self) -> None:
+        info_text = (ROOT / "fixtures" / "pdf" / "pdfinfo-three-pages.txt").read_text(encoding="utf-8")
+        render_calls: dict[int, int] = {}
+
+        def fake_runner(command, **kwargs):
+            if command[0] == "synthetic-pdfinfo":
+                return subprocess.CompletedProcess(command, 0, info_text, "")
+            page = int(command[command.index("-f") + 1])
+            render_calls[page] = render_calls.get(page, 0) + 1
+            if page == 2:
+                return subprocess.CompletedProcess(command, 9, "", "synthetic render failure")
+            Path(command[-1] + ".png").write_bytes(ONE_PIXEL_PNG)
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        def fake_ocr(source, **kwargs):
+            if source.stem.endswith("0003"):
+                raise RuntimeError("synthetic OCR failure")
+            return {
+                "contract_version": "data-lens-method-result/1.0",
+                "method_id": "data_lens.tesseract_ocr",
+                "method_version": "0.1.0",
+                "status": "succeeded",
+                "results": [],
+                "diagnostics": [],
+            }
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "synthetic.pdf"
+            source.write_bytes(b"%PDF synthetic")
+            payload = build_pdf_evidence(
+                source,
+                root / "evidence",
+                max_pages=3,
+                runner=fake_runner,
+                ocr_function=fake_ocr,
+                pdftoppm="synthetic-pdftoppm",
+                pdfinfo="synthetic-pdfinfo",
+            )
+        result = payload["results"][0]
+        self.assertEqual(result["completion_status"], "partial")
+        self.assertEqual(render_calls, {1: 1, 2: 1, 3: 1})
+        self.assertEqual({item["stage"] for item in result["failure_ledger"]}, {"render", "ocr"})
+        self.assertTrue(all(item["retry_status"] == "not_retried" for item in result["failure_ledger"]))
+
+    def test_pdf_rejects_unbounded_or_nonempty_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "synthetic.pdf"
+            source.write_bytes(b"%PDF synthetic")
+            output = root / "evidence"
+            output.mkdir()
+            (output / "keep.txt").write_text("preserve", encoding="utf-8")
+            with self.assertRaisesRegex(FileExistsError, "must be empty"):
+                build_pdf_evidence(source, output, pdftoppm="synthetic", pdfinfo="synthetic")
+            with self.assertRaisesRegex(ValueError, "between 1 and 30"):
+                build_pdf_evidence(source, root / "other", max_pages=31, pdftoppm="synthetic", pdfinfo="synthetic")
+
 
 class AdoptionTests(unittest.TestCase):
     def test_request_success_and_adoption_success_are_separate(self) -> None:
@@ -307,6 +423,7 @@ class RepositoryTests(unittest.TestCase):
         self.assertIn("validate-adoption", completed.stdout)
         self.assertIn("multimodal-inventory", completed.stdout)
         self.assertIn("ocr", completed.stdout)
+        self.assertIn("pdf", completed.stdout)
 
 
 class RoutingTests(unittest.TestCase):

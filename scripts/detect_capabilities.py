@@ -21,7 +21,7 @@ PYTHON_MODULES = {
 EXECUTABLES = {
     "Rscript": ("r_runtime", True, True, "scripts/r_method_runner.py"),
     "ffprobe": ("audio_video_metadata", True, False, "scripts/multimodal_inventory.py"),
-    "pdftoppm": ("pdf_rendering", False, False, None),
+    "pdftoppm": ("pdf_rendering", True, True, "scripts/pdf_evidence.py"),
     "tesseract": ("ocr", True, True, "scripts/ocr_evidence.py"),
 }
 

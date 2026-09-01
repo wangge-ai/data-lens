@@ -1,0 +1,4 @@
+Title:           Synthetic Data Lens PDF
+Pages:           3
+Page size:       612 x 792 pts (letter)
+PDF version:     1.4
