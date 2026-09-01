@@ -32,3 +32,14 @@ The architecture deliberately excludes a web UI, API server, background queue, p
 3. Optional R: registered scripts through the R adapter.
 4. Optional system tools: ffprobe, PDF renderers, OCR, and transcription tools.
 5. Remote capabilities: disabled unless the user authorizes the exact external action.
+
+## Capability readiness
+
+The capability report separates dependency presence from workflow readiness:
+
+- `installed`: the module or executable is visible in the current process;
+- `wired`: Data Lens has a bounded entry point for it;
+- `fixture_validated`: synthetic success, boundary, and failure behavior is covered;
+- `production_ready`: a de-identified real-shape trial and required human review have completed.
+
+The legacy-compatible `available` field means only `installed`. It must not be used by itself to claim that a capability is wired or production-ready.

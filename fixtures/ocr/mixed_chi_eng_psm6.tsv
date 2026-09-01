@@ -1,0 +1,7 @@
+level	page_num	block_num	par_num	line_num	word_num	left	top	width	height	conf	text
+1	1	0	0	0	0	0	0	640	120	-1	
+5	1	1	1	1	1	20	20	80	32	93.5	数据
+5	1	1	1	1	2	112	20	80	32	92.0	分析
+5	1	1	1	1	3	208	20	72	32	96.0	Data
+5	1	1	1	1	4	290	20	72	32	95.0	Lens
+5	1	1	1	2	1	20	68	120	28	89.0	证据可定位

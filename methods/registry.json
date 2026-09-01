@@ -1,6 +1,6 @@
 {
   "contract_version": "data-lens-method-registry/1.0",
-  "skill_version": "0.1.0",
+  "skill_version": "0.2.0",
   "methods": [
     {"method_id": "data_lens.inventory_profile", "version": "1.0.0", "manifest": "inventory-profile.json"},
     {"method_id": "data_lens.table_profile", "version": "1.0.0", "manifest": "table-profile.json"},
@@ -10,6 +10,7 @@
     {"method_id": "data_lens.qualitative_framework", "version": "1.0.0", "manifest": "qualitative-framework.json"},
     {"method_id": "data_lens.operational_tables", "version": "1.0.0", "manifest": "operational-tables.json"},
     {"method_id": "data_lens.multimodal_inventory", "version": "1.0.0", "manifest": "multimodal-inventory.json"},
+    {"method_id": "data_lens.tesseract_ocr", "version": "0.1.0", "manifest": "tesseract-ocr.json"},
     {"method_id": "data_lens.local_vector_retrieval", "version": "1.0.0", "manifest": "local-vector-retrieval.json"},
     {"method_id": "data_lens.r_descriptive_summary", "version": "0.1.0", "manifest": "r-descriptive-summary.json"}
   ]

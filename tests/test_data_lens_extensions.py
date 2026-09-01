@@ -18,6 +18,7 @@ from check_public_tree import scan as scan_public_tree  # noqa: E402
 from detect_capabilities import detect  # noqa: E402
 from local_vector_index import build_index, query_index  # noqa: E402
 from multimodal_inventory import collect  # noqa: E402
+from ocr_evidence import parse_tsv, run_ocr  # noqa: E402
 from plan_analysis import build_plan  # noqa: E402
 from r_method_runner import probe, validate_result  # noqa: E402
 from select_samples import build_sample  # noqa: E402
@@ -36,6 +37,21 @@ class CapabilityTests(unittest.TestCase):
         self.assertTrue(payload["core"]["python_standard_library"]["available"])
         self.assertFalse(payload["policy"]["auto_install"])
         self.assertFalse(payload["policy"]["remote_services_enabled_by_default"])
+
+    def test_capability_report_separates_installation_from_workflow_readiness(self) -> None:
+        payload = detect()
+        self.assertEqual(payload["contract_version"], "data-lens-capabilities/2.0")
+        for group in ("core", "optional_python", "optional_executables"):
+            for capability in payload[group].values():
+                self.assertEqual(capability["available"], capability["installed"])
+                self.assertIn(capability["state"], {"unavailable", "installed_only", "wired", "fixture_validated", "production_ready"})
+        semantic = payload["optional_python"]["semantic_embeddings"]
+        self.assertFalse(semantic["wired"])
+        self.assertIsNone(semantic["entrypoint"])
+        ocr = payload["optional_executables"]["ocr"]
+        self.assertTrue(ocr["wired"])
+        self.assertTrue(ocr["fixture_validated"])
+        self.assertFalse(ocr["production_ready"])
 
     def test_r_probe_is_optional(self) -> None:
         payload = probe()
@@ -87,6 +103,78 @@ class MultimodalTests(unittest.TestCase):
             self.assertEqual(item["medium"], "image")
             self.assertEqual(item["semantic_review"], "required")
             self.assertEqual((item["width"], item["height"]), (1, 1))
+
+    def test_tesseract_tsv_fixture_keeps_text_confidence_and_locators(self) -> None:
+        parsed = parse_tsv((ROOT / "fixtures" / "ocr" / "mixed_chi_eng_psm6.tsv").read_text(encoding="utf-8"))
+        self.assertIn("数据", parsed["raw_text"])
+        self.assertEqual(parsed["metrics"]["word_count"], 5)
+        self.assertEqual(parsed["words"][0]["locator"]["bbox"], [20, 20, 80, 32])
+        self.assertIsInstance(parsed["metrics"]["mean_confidence"], float)
+
+    def test_ocr_execution_retains_bounded_candidates_without_semantic_adoption(self) -> None:
+        fixtures = {
+            "6": (ROOT / "fixtures" / "ocr" / "mixed_chi_eng_psm6.tsv").read_text(encoding="utf-8"),
+            "11": (ROOT / "fixtures" / "ocr" / "mixed_chi_eng_psm11.tsv").read_text(encoding="utf-8"),
+        }
+
+        def fake_runner(command, **kwargs):
+            if "--version" in command:
+                return subprocess.CompletedProcess(command, 0, "tesseract v5.synthetic\n", "")
+            if "--list-langs" in command:
+                return subprocess.CompletedProcess(command, 0, "List of available languages (2):\nchi_sim\neng\n", "")
+            psm = command[command.index("--psm") + 1]
+            return subprocess.CompletedProcess(command, 0, fixtures[psm], "")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "synthetic.png"
+            source.write_bytes(ONE_PIXEL_PNG)
+            payload = run_ocr(source, runner=fake_runner, executable="synthetic-tesseract")
+        self.assertEqual(payload["status"], "succeeded")
+        result = payload["results"][0]
+        self.assertEqual(result["processing_state"], "ocr_complete")
+        self.assertEqual(result["semantic_review_status"], "not_reviewed")
+        self.assertEqual(result["selection_status"], "algorithmic_candidate_only")
+        self.assertEqual(len(result["candidates"]), 2)
+        self.assertTrue(all(candidate["adoption_status"] == "not_adopted" for candidate in result["candidates"]))
+        self.assertTrue(all(candidate["raw_text"] for candidate in result["candidates"]))
+
+    def test_ocr_rejects_missing_language_and_malformed_tsv(self) -> None:
+        def fake_runner(command, **kwargs):
+            if "--version" in command:
+                return subprocess.CompletedProcess(command, 0, "tesseract v5.synthetic\n", "")
+            return subprocess.CompletedProcess(command, 0, "List of available languages (1):\neng\n", "")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "synthetic.png"
+            source.write_bytes(ONE_PIXEL_PNG)
+            with self.assertRaisesRegex(ValueError, "missing Tesseract language data"):
+                run_ocr(source, runner=fake_runner, executable="synthetic-tesseract")
+        with self.assertRaisesRegex(ValueError, "invalid Tesseract TSV header"):
+            parse_tsv("text\tconf\nhello\t90\n")
+
+    def test_ocr_rejects_unbounded_psm_and_unsafe_language_spec(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "synthetic.png"
+            source.write_bytes(ONE_PIXEL_PNG)
+            with self.assertRaisesRegex(ValueError, "one to three supported PSM"):
+                run_ocr(source, psms=(3, 4, 6, 11), executable="synthetic-tesseract")
+            with self.assertRaisesRegex(ValueError, "plus-separated"):
+                run_ocr(source, languages="chi_sim;unexpected", executable="synthetic-tesseract")
+
+    def test_ocr_cli_never_overwrites_source_image(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "synthetic.png"
+            source.write_bytes(ONE_PIXEL_PNG)
+            completed = subprocess.run(
+                [sys.executable, str(SCRIPTS / "ocr_evidence.py"), str(source), "--output", str(source)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("must not overwrite", completed.stderr)
+            self.assertEqual(source.read_bytes(), ONE_PIXEL_PNG)
 
 
 class AdoptionTests(unittest.TestCase):
@@ -218,6 +306,7 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0)
         self.assertIn("validate-adoption", completed.stdout)
         self.assertIn("multimodal-inventory", completed.stdout)
+        self.assertIn("ocr", completed.stdout)
 
 
 class RoutingTests(unittest.TestCase):

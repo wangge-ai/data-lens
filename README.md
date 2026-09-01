@@ -35,6 +35,7 @@ Useful local commands:
 
 ```bash
 python scripts/data_lens.py capabilities
+python scripts/data_lens.py ocr <image> --output ocr-result.json
 python scripts/data_lens.py test
 python scripts/data_lens.py inventory <source> --output inventory.json
 python scripts/data_lens.py plan --goal "your original question" --inventory inventory.json --output plan.json
@@ -42,7 +43,7 @@ python scripts/data_lens.py plan --goal "your original question" --inventory inv
 
 ## Optional capabilities
 
-The default path uses the Python standard library. Data Lens detects but never auto-installs optional runtimes such as R, ffprobe, Pillow, sentence-transformers, Chroma, or Qdrant clients. Optional capabilities must degrade visibly when unavailable.
+The default path uses the Python standard library. Data Lens detects but never auto-installs optional runtimes such as R, Tesseract, ffprobe, Pillow, sentence-transformers, Chroma, or Qdrant clients. Capability reports distinguish installed dependencies from wired, fixture-validated, and production-ready workflows. Optional capabilities must degrade visibly when unavailable.
 
 ## Evidence rule
 

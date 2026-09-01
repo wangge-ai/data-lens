@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/capability-report.schema.json",
+  "title": "Data Lens Capability Report 2.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "core", "optional_python", "optional_executables", "policy"],
+  "properties": {
+    "contract_version": {"const": "data-lens-capabilities/2.0"},
+    "core": {"type": "object", "additionalProperties": {"$ref": "#/$defs/capability"}},
+    "optional_python": {"type": "object", "additionalProperties": {"$ref": "#/$defs/capability"}},
+    "optional_executables": {"type": "object", "additionalProperties": {"$ref": "#/$defs/capability"}},
+    "policy": {"type": "object"}
+  },
+  "$defs": {
+    "capability": {
+      "type": "object",
+      "required": ["available", "installed", "wired", "fixture_validated", "production_ready", "state", "entrypoint"],
+      "properties": {
+        "available": {"type": "boolean"},
+        "installed": {"type": "boolean"},
+        "wired": {"type": "boolean"},
+        "fixture_validated": {"type": "boolean"},
+        "production_ready": {"type": "boolean"},
+        "state": {"enum": ["unavailable", "installed_only", "wired", "fixture_validated", "production_ready"]},
+        "entrypoint": {"type": ["string", "null"]},
+        "module": {"type": "string"},
+        "command": {"type": "string"},
+        "runtime": {"type": "string"}
+      }
+    }
+  }
+}

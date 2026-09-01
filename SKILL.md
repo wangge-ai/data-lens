@@ -66,6 +66,7 @@ description: "面向智能体的证据型数据分析 Skill。用于分析表格
 - R 不自动安装。只有方法资格满足且 `Rscript` 可用时，才通过受控适配器运行注册的 R 方法；规则见 [references/optional-r.md](references/optional-r.md)。
 - 向量索引默认本地、可删除重建且不是事实源。未安装嵌入模型时可使用确定性哈希向量做召回 smoke；规则见 [references/vector-retrieval.md](references/vector-retrieval.md)。
 - 图片、PDF、音频和视频先建立可定位证据，再做语义分析；元数据、OCR、转录和实际语义审核是不同状态。
+- 本地图片 OCR 使用 `python scripts/data_lens.py ocr <image> --output <result.json>`；默认有界比较 PSM 6 与 11，保留全部候选、置信度和像素坐标。算法推荐候选仍是未审核文本，规则见 [references/multimodal-evidence.md](references/multimodal-evidence.md)。
 - 任何外部模型、远程向量服务或网络发送，都必须在发送前获得当前任务的明确授权；不得自动探测、修复重试或上传原始资料。
 
 ## 方法治理
