@@ -5,7 +5,9 @@ import json
 import tempfile
 import unittest
 import zipfile
+import builtins
 from pathlib import Path
+from unittest.mock import patch
 
 from _common import file_sha256, load_json, write_csv, write_json
 from apply_visual_reviews import apply as apply_visual_reviews
@@ -537,6 +539,23 @@ class CorpusLensRegressionTests(unittest.TestCase):
             result = inspect_visuals([root])
         self.assertEqual(result["summary"]["pixel_readable_images"], 1)
         self.assertEqual(result["summary"]["semantic_reviewed_images"], 0)
+        self.assertEqual(result["images"][0]["semantic_review_status"], "not_reviewed")
+
+    def test_visual_inventory_reads_png_without_pillow(self) -> None:
+        original_import = builtins.__import__
+
+        def import_without_pillow(name, *args, **kwargs):
+            if name == "PIL" or name.startswith("PIL."):
+                raise ImportError("simulated missing optional Pillow dependency")
+            return original_import(name, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            image = Path(temp_dir) / "pixel.png"
+            image.write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="))
+            with patch("builtins.__import__", side_effect=import_without_pillow):
+                result = inspect_visuals([image])
+        self.assertEqual(result["summary"]["pixel_readable_images"], 1)
+        self.assertEqual(result["images"][0]["metadata_reader"], "stdlib_header")
         self.assertEqual(result["images"][0]["semantic_review_status"], "not_reviewed")
 
     def test_visual_inventory_wechat_scope_excludes_footer_and_comment_references(self) -> None:

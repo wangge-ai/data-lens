@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 
 from _common import file_sha256, read_text_fallback, write_json
 from extract_wechat_article_body import BODY_END_MARKER, BODY_START_MARKER, extract_wechat_article
+from multimodal_inventory import image_size
 
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
@@ -34,11 +35,17 @@ def iter_files(paths: list[Path]) -> list[Path]:
 
 def image_profile(path: Path) -> dict[str, Any]:
     record: dict[str, Any] = {"path": str(path), "sha256": file_sha256(path), "size_bytes": path.stat().st_size}
+    error_name = "UnknownError"
     try:
         from PIL import Image  # type: ignore
-
-        with Image.open(path) as image:
-            width, height = image.size
+    except ImportError as exc:
+        error_name = type(exc).__name__
+        try:
+            dimensions = image_size(path)
+        except Exception:
+            dimensions = None
+        if dimensions:
+            width, height = dimensions
             record.update(
                 {
                     "pixel_status": "readable",
@@ -49,21 +56,47 @@ def image_profile(path: Path) -> dict[str, Any]:
                     "height": height,
                     "aspect_ratio": round(width / height, 4) if height else None,
                     "orientation": "square" if width == height else "landscape" if width > height else "portrait",
-                    "mode": image.mode,
-                    "format": image.format,
-                    "frames": int(getattr(image, "n_frames", 1)),
+                    "mode": None,
+                    "format": path.suffix.lstrip(".").upper(),
+                    "frames": None,
+                    "metadata_reader": "stdlib_header",
+                    "capability_note": "Pillow is unavailable; dimensions were read using the bounded standard-library parser.",
                 }
             )
-    except Exception as exc:  # deterministic record of unreadable/corrupt/unsupported assets
-        record.update(
-            {
-                "pixel_status": "unreadable",
-                "ocr_status": "not_run",
-                "semantic_review_status": "not_reviewed",
-                "source_mapping_status": "unmapped",
-                "error": type(exc).__name__,
-            }
-        )
+            return record
+    else:
+        try:
+            with Image.open(path) as image:
+                width, height = image.size
+                record.update(
+                    {
+                        "pixel_status": "readable",
+                        "ocr_status": "not_run",
+                        "semantic_review_status": "not_reviewed",
+                        "source_mapping_status": "unmapped",
+                        "width": width,
+                        "height": height,
+                        "aspect_ratio": round(width / height, 4) if height else None,
+                        "orientation": "square" if width == height else "landscape" if width > height else "portrait",
+                        "mode": image.mode,
+                        "format": image.format,
+                        "frames": int(getattr(image, "n_frames", 1)),
+                        "metadata_reader": "pillow",
+                    }
+                )
+                return record
+        except Exception as exc:
+            error_name = type(exc).__name__
+    # deterministic record of unreadable/corrupt/unsupported assets
+    record.update(
+        {
+            "pixel_status": "unreadable",
+            "ocr_status": "not_run",
+            "semantic_review_status": "not_reviewed",
+            "source_mapping_status": "unmapped",
+            "error": error_name,
+        }
+    )
     return record
 
 
