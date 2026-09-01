@@ -12,7 +12,7 @@ from typing import Any, Iterable
 
 
 SKILL_NAME = "data-lens"
-SKILL_VERSION = "0.3.1"
+SKILL_VERSION = "0.4.0"
 
 
 def normalize_title(value: Any) -> str:

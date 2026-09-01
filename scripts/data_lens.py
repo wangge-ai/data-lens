@@ -11,6 +11,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 COMMANDS = {
     "inventory": "inventory_inputs.py",
     "plan": "plan_analysis.py",
+    "profile-text": "profile_text_corpus.py",
     "sample": "select_samples.py",
     "table": "tabular_analysis.py",
     "prepare-mixed": "prepare_mixed_run.py",

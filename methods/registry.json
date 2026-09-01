@@ -1,6 +1,6 @@
 {
   "contract_version": "data-lens-method-registry/1.0",
-  "skill_version": "0.3.1",
+  "skill_version": "0.4.0",
   "methods": [
     {"method_id": "data_lens.inventory_profile", "version": "1.0.0", "manifest": "inventory-profile.json"},
     {"method_id": "data_lens.table_profile", "version": "1.0.0", "manifest": "table-profile.json"},

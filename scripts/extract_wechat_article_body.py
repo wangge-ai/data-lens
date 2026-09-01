@@ -124,10 +124,20 @@ class WechatContentParser(HTMLParser):
         self.found_count = 0
         self.parts: list[str] = []
         self.images: list[dict[str, Any]] = []
+        self.meta: dict[str, list[str]] = {}
+        self.in_title = False
+        self.title_parts: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         tag = tag.lower()
         values = {str(key).lower(): value for key, value in attrs}
+        if tag == "meta":
+            key = str(values.get("name") or values.get("property") or "").strip().lower()
+            content = str(values.get("content") or "").strip()
+            if key and content:
+                self.meta.setdefault(key, []).append(content)
+        elif tag == "title":
+            self.in_title = True
         if not self.active_tags:
             if values.get("id") == "js_content":
                 self.active_tags = [tag]
@@ -160,6 +170,8 @@ class WechatContentParser(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         tag = tag.lower()
+        if tag == "title":
+            self.in_title = False
         if not self.active_tags:
             return
         if tag in SKIP_TAGS and self.skip_depth:
@@ -172,8 +184,24 @@ class WechatContentParser(HTMLParser):
             self.active_tags = self.active_tags[:match_index]
 
     def handle_data(self, data: str) -> None:
+        if self.in_title:
+            self.title_parts.append(data)
         if self.active_tags and not self.skip_depth:
             self.parts.append(data)
+
+
+def page_metadata(meta: dict[str, list[str]], title: str = "") -> dict[str, Any]:
+    authors: list[str] = []
+    for key in ("author", "og:article:author"):
+        authors.extend(meta.get(key, []))
+    authors = list(dict.fromkeys(clean_text(value) for value in authors if clean_text(value)))
+    title_candidates = [*(meta.get("og:title") or []), *(meta.get("twitter:title") or []), title]
+    resolved_title = next((clean_text(value) for value in title_candidates if clean_text(value)), "")
+    return {
+        "title": resolved_title,
+        "authors": authors,
+        "author_status": "single_confirmed" if len(authors) == 1 else "missing" if not authors else "conflicting",
+    }
 
 
 def html_js_content(text: str) -> dict[str, Any]:
@@ -199,6 +227,13 @@ def html_js_content(text: str) -> dict[str, Any]:
                     }
                 )
         confirmed = len(nodes) == 1 and bool(body)
+        meta: dict[str, list[str]] = {}
+        for meta_node in soup.find_all("meta"):
+            key = str(meta_node.get("name") or meta_node.get("property") or "").strip().lower()
+            content = str(meta_node.get("content") or "").strip()
+            if key and content:
+                meta.setdefault(key, []).append(content)
+        metadata = page_metadata(meta, soup.title.get_text(" ", strip=True) if soup.title else "")
         for item in images:
             for key in ("declared_width", "declared_height_ratio"):
                 value = item.get(key)
@@ -217,7 +252,8 @@ def html_js_content(text: str) -> dict[str, Any]:
             "origin_end_line": None,
             "excluded_prefix_lines": None,
             "excluded_suffix_lines": None,
-            "title": "",
+            "title": metadata["title"],
+            "page_metadata": metadata,
             "images": images,
             "parser_engine": "beautifulsoup_html_parser",
             "warnings": [] if confirmed else [f"HTML中 #js_content 数量为 {len(nodes)}，或正文为空；需要人工确认"],
@@ -239,6 +275,7 @@ def html_js_content(text: str) -> dict[str, Any]:
                 normalized[key] = None
         images.append(normalized)
     confirmed = parser.found_count == 1 and bool(body)
+    metadata = page_metadata(parser.meta, clean_text("".join(parser.title_parts)))
     return {
         "body_text": body,
         "profile": "wechat_archive",
@@ -250,7 +287,8 @@ def html_js_content(text: str) -> dict[str, Any]:
         "origin_end_line": None,
         "excluded_prefix_lines": None,
         "excluded_suffix_lines": None,
-        "title": "",
+        "title": metadata["title"],
+        "page_metadata": metadata,
         "images": images,
         "parser_engine": "stdlib_html_parser",
         "warnings": [] if confirmed else [f"HTML中 #js_content 数量为 {parser.found_count}，或正文为空；需要人工确认"],

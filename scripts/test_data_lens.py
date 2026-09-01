@@ -18,6 +18,7 @@ from match_items_to_metrics import FIELDS, match
 from materialize_run_context import build_context
 from parse_tabular_exports import legacy_xls_cache_path, read_workbook
 from plan_analysis import build_plan
+from profile_text_corpus import build_profile as build_text_profile
 from prepare_operational_run import prepare as prepare_operational_run
 from analyze_operational_facts import analyze as analyze_operational_facts
 from validate_operational_outputs import validate as validate_operational_outputs
@@ -293,7 +294,7 @@ class CorpusLensRegressionTests(unittest.TestCase):
         self.assertEqual(plan["primary_route"], "method_corpus")
         self.assertEqual(plan["comparison_unit"], "atomic_method_claim")
 
-    def test_meta_analysis_language_does_not_route_to_method_corpus(self) -> None:
+    def test_auto_angle_discovery_routes_text_corpus_without_user_dimensions(self) -> None:
         inventory = {
             "summary": {
                 "canonical_items": 89,
@@ -309,9 +310,66 @@ class CorpusLensRegressionTests(unittest.TestCase):
         )
         plan = build_plan(goal, inventory)
         self.assertNotEqual(plan["primary_route"], "method_corpus")
-        self.assertEqual(plan["primary_route"], "novel_route")
-        self.assertEqual(plan["route_confidence"], "low")
-        self.assertTrue(plan["review_required"])
+        self.assertEqual(plan["primary_route"], "qualitative_corpus")
+        self.assertEqual(plan["comparison_unit"], "article")
+        self.assertEqual(plan["recommended_sampling_strategy"], "full_census")
+        self.assertIn("angle_discovery", plan["supporting_modules"])
+        self.assertTrue(plan["angle_discovery"]["requested"])
+        self.assertEqual(plan["angle_discovery"]["adopted_angle_limit"], 4)
+        self.assertFalse(plan["review_required"])
+
+    def test_auto_angle_discovery_uses_same_author_route_when_scope_is_explicit(self) -> None:
+        inventory = {
+            "summary": {"canonical_items": 6},
+            "files": [
+                {"canonical": True, "evidence_role": "content_text", "container_type": "article_candidate"}
+                for _ in range(6)
+            ],
+        }
+        plan = build_plan("分析这个公众号的文章，我不指定角度，由 Skill 自动找角度", inventory)
+        self.assertEqual(plan["primary_route"], "same_author_content")
+        self.assertEqual(plan["comparison_unit"], "article")
+        self.assertEqual(plan["recommended_sampling_strategy"], "full_census")
+        self.assertEqual(plan["route_confidence"], "high")
+
+    def test_auto_angle_discovery_recognizes_no_preset_wording(self) -> None:
+        inventory = {
+            "files": [
+                {"canonical": True, "evidence_role": "content_text", "container_type": "article_candidate"}
+                for _ in range(18)
+            ],
+        }
+        plan = build_plan("分析这批 HTML；不给预设分析角度，由 Data Lens 自动发现", inventory)
+        self.assertEqual(plan["primary_route"], "qualitative_corpus")
+        self.assertTrue(plan["angle_discovery"]["requested"])
+
+    def test_text_profile_uses_verified_extracts_and_reports_visual_concentration(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            first = root / "one.txt"
+            second = root / "two.txt"
+            first.write_text("开头\n\n01\n正文\n", encoding="utf-8")
+            second.write_text("另一个开头\n", encoding="utf-8")
+            manifest = {
+                "records": [
+                    {
+                        "source_container_id": "SRC-1", "title": "一", "status": "parsed",
+                        "origin_path": str(root / "[202601010900]一.html"), "origin_sha256": "a",
+                        "artifact_path": str(first), "body_boundary": {"images": [{}, {}, {}]},
+                    },
+                    {
+                        "source_container_id": "SRC-2", "title": "二", "status": "parsed",
+                        "origin_path": str(root / "[202601020900]二.html"), "origin_sha256": "b",
+                        "artifact_path": str(second), "body_boundary": {"images": [{}]},
+                    },
+                ]
+            }
+            profile = build_text_profile(manifest)
+        self.assertEqual(profile["summary"]["profiled_records"], 2)
+        self.assertEqual(profile["summary"]["articles_with_numbered_sections"], 1)
+        self.assertEqual(profile["summary"]["body_image_references"], 4)
+        self.assertEqual(profile["summary"]["top_four_image_share"], 1.0)
+        self.assertEqual(profile["records"][0]["publish_date_hint"], "20260101")
 
     def test_original_html_counts_as_visual_evidence_availability(self) -> None:
         inventory = {
@@ -657,6 +715,16 @@ class CorpusLensRegressionTests(unittest.TestCase):
         self.assertEqual(result["status"], "confirmed_js_content")
         self.assertEqual(result["body_text"], "作者正文")
         self.assertEqual([item["remote_reference"] for item in result["images"]], ["body.png"])
+
+    def test_wechat_html_preserves_author_and_title_metadata(self) -> None:
+        result = html_js_content(
+            '<html><head><title>页面标题</title><meta name="author" content="顾小北">'
+            '<meta property="og:article:author" content="顾小北"><meta property="og:title" content="文章标题">'
+            '</head><body><div id="js_content"><p>作者正文</p></div></body></html>'
+        )
+        self.assertEqual(result["page_metadata"]["authors"], ["顾小北"])
+        self.assertEqual(result["page_metadata"]["author_status"], "single_confirmed")
+        self.assertEqual(result["page_metadata"]["title"], "文章标题")
 
     def test_wechat_extract_manifest_keeps_boundary_trace(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

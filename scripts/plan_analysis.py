@@ -10,6 +10,15 @@ from _common import SKILL_NAME, SKILL_VERSION, load_json, write_json
 
 
 DIMENSIONS: list[tuple[str, str, tuple[str, ...]]] = [
+    ("angle_discovery", "自动发现分析角度", (
+        r"自动(?:寻找|发现|生成|选择|筛选).{0,8}(?:分析)?角度",
+        r"自己(?:寻找|发现|生成|选择|筛选).{0,8}(?:分析)?角度",
+        r"自己找角度", r"自动找角度", r"无预设(?:分析)?角度",
+        r"不给.{0,8}(?:分析)?角度",
+        r"不(?:提供|指定|预设).{0,8}(?:分析)?角度",
+        r"先不(?:提供|指定|预设).{0,8}(?:分析)?角度",
+        r"没想好.{0,8}(?:分析)?角度", r"不知道.{0,8}(?:怎么|如何)分析",
+    )),
     ("inventory_profile", "资料清点与数据画像", (r"有什么资料", r"有哪些资料", r"清点", r"盘点", r"数据画像", r"字段画像", r"缺失率", r"重复值", r"数据质量")),
     ("generic_tabular", "通用表格分析", (r"描述统计", r"探索性数据分析", r"EDA", r"字段分布", r"数值分布", r"分组统计", r"中位数", r"四分位", r"稳健异常", r"变化点", r"CSV", r"TSV")),
     ("semantic_retrieval", "语义检索与候选召回", (r"语义检索", r"向量检索", r"向量库", r"相似段落", r"相似内容", r"候选召回")),
@@ -109,6 +118,7 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
     explicit_mixed_goal = any(re.search(pattern, goal, re.I) for pattern in MIXED_GOAL_PATTERNS)
     author_goal = any(re.search(pattern, goal, re.I) for pattern in AUTHOR_GOAL_PATTERNS)
     explicit_method_intent = has_explicit_method_route_intent(goal)
+    angle_discovery_requested = "angle_discovery" in ids
     multi_dimension_mixed = (
         "method_extraction" in ids
         and len(ids.intersection({"visual_layout", "course_structure", "audience_voice", "performance", "family_relation"})) >= 1
@@ -208,6 +218,17 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
             sampling = "pilot"
             confidence = "low"
             missing.append("没有识别到评论或用户反馈资料")
+    elif angle_discovery_requested and has_text:
+        article_count = int(container_counts.get("article_candidate") or 0)
+        text_count = int(role_counts.get("content_text") or 0)
+        all_text_units_are_articles = article_count > 0 and article_count == text_count
+        route = "same_author_content" if author_goal and all_text_units_are_articles else "qualitative_corpus"
+        comparison_unit = "article" if all_text_units_are_articles else "document_or_declared_case"
+        sampling = "full_census" if 0 < text_count <= 20 else "balanced_topic"
+        confidence = "high" if author_goal and all_text_units_are_articles else "medium"
+        supporting.extend(["angle_discovery", "qualitative_framework"])
+        if all_text_units_are_articles and not author_goal:
+            missing.append("尚未确认资料是否来自同一作者或同一账号；确认前只形成当前语料范围内的横向模式")
     elif "course_structure" in ids or (not dimensions and has_av and not has_text) or ("visual_layout" in ids and has_visual and not has_text):
         route = "multimodal_evidence"
         comparison_unit = "media_segment_or_visual_region"
@@ -296,7 +317,7 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
         (SKILL_VERSION + "|" + route + "|" + ",".join(sorted(set(supporting))) + "|" + ",".join(sorted(ids))).encode("utf-8")
     ).hexdigest()
     return {
-        "plan_version": "1.4",
+        "plan_version": "1.5",
         "skill_name": SKILL_NAME,
         "skill_version": SKILL_VERSION,
         "user_goal": goal,
@@ -308,6 +329,21 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
         "method_fingerprint": method_fingerprint,
         "comparison_unit": comparison_unit,
         "recommended_sampling_strategy": sampling,
+        "angle_discovery": {
+            "requested": angle_discovery_requested,
+            "status": "required" if angle_discovery_requested else "not_requested",
+            "candidate_limit": 8,
+            "adopted_angle_limit": 4,
+            "selection_policy": "candidate_generation_then_evidence_screen",
+            "required_checks": [
+                "decision_relevance",
+                "answerable_from_declared_scope",
+                "coverage_plan",
+                "distinct_from_other_candidates",
+                "action_value",
+                "overreach_risk",
+            ],
+        },
         "corpus_shape": {
             "canonical_items": int((inventory.get("summary") or {}).get("canonical_items") or sum(role_counts.values())),
             "role_diversity": role_diversity,
