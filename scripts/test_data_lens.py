@@ -359,6 +359,19 @@ class CorpusLensRegressionTests(unittest.TestCase):
         self.assertEqual(plan["recommended_sampling_strategy"], "pdf_structure_then_internal_unit_stratified")
         self.assertIn("pdf_structure_profile", plan["supporting_modules"])
 
+    def test_free_rein_mixed_corpus_routes_to_angle_discovery(self) -> None:
+        inventory = {
+            "summary": {"by_extension": {".xlsx": 4, ".txt": 1}},
+            "files": [
+                {"canonical": True, "evidence_role": "content_text", "container_type": "text_document"},
+                {"canonical": True, "evidence_role": "tabular_data", "container_type": "workbook"},
+            ],
+        }
+        plan = build_plan("除了子文件夹不分析，剩下的你来整理分析，给你自由发挥", inventory)
+        self.assertEqual(plan["primary_route"], "mixed_corpus")
+        self.assertTrue(plan["angle_discovery"]["requested"])
+        self.assertIn("angle_discovery", plan["supporting_modules"])
+
     def test_pdf_structure_sampling_is_bounded_and_not_front_loaded(self) -> None:
         selected = bounded_page_plan(315, maximum=12, priority_pages=[4, 120])
         self.assertLessEqual(len(selected), 12)
@@ -621,6 +634,35 @@ class CorpusLensRegressionTests(unittest.TestCase):
         self.assertEqual(by_name["电商运营"]["candidate_role"], "ecommerce_table_candidate")
         self.assertEqual(by_name["股票记录"]["embedded_media_count"], 1)
         self.assertEqual(by_name["股票记录"]["media_review_status"], "not_extracted")
+
+    def test_workbook_parser_ignores_stale_a1_dimension(self) -> None:
+        try:
+            import openpyxl  # type: ignore
+        except ImportError:
+            self.skipTest("openpyxl is optional")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            workbook_path = root / "stale-dimension.xlsx"
+            rewritten_path = root / "rewritten.xlsx"
+            workbook = openpyxl.Workbook()
+            sheet = workbook.active
+            sheet.title = "需求表"
+            sheet["A1"] = "产品"
+            sheet["B1"] = "卖点"
+            sheet["A3"] = "儿童防蛀膏"
+            sheet["B3"] = "含氟防蛀"
+            workbook.save(workbook_path)
+            with zipfile.ZipFile(workbook_path, "r") as source, zipfile.ZipFile(rewritten_path, "w") as target:
+                for info in source.infolist():
+                    payload = source.read(info.filename)
+                    if info.filename == "xl/worksheets/sheet1.xml":
+                        payload = payload.replace(b'<dimension ref="A1:B3"/>', b'<dimension ref="A1"/>')
+                    target.writestr(info, payload)
+            rewritten_path.replace(workbook_path)
+            detected, sheets = read_workbook(workbook_path, None)
+        self.assertEqual(detected, "xlsx")
+        self.assertEqual(sheets[0]["row_count"], 3)
+        self.assertEqual(sheets[0]["rows"][2], ["儿童防蛀膏", "含氟防蛀"])
 
     def test_performance_sampling_excludes_fuzzy_matches(self) -> None:
         inventory = {"files": []}

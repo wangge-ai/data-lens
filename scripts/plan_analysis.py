@@ -19,6 +19,8 @@ DIMENSIONS: list[tuple[str, str, tuple[str, ...]]] = [
         r"不(?:提供|指定|预设).{0,8}(?:分析)?角度",
         r"先不(?:提供|指定|预设).{0,8}(?:分析)?角度",
         r"没想好.{0,8}(?:分析)?角度", r"不知道.{0,8}(?:怎么|如何)分析",
+        r"(?:给你|让你|由你)?自由发挥", r"自行发挥", r"随你(?:分析|判断|发挥)",
+        r"你来(?:定|决定|选择).{0,8}(?:分析)?角度",
     )),
     ("inventory_profile", "资料清点与数据画像", (r"有什么资料", r"有哪些资料", r"清点", r"盘点", r"数据画像", r"字段画像", r"缺失率", r"重复值", r"数据质量")),
     ("generic_tabular", "通用表格分析", (r"描述统计", r"探索性数据分析", r"EDA", r"字段分布", r"数值分布", r"分组统计", r"中位数", r"四分位", r"稳健异常", r"变化点", r"CSV", r"TSV")),
@@ -127,7 +129,7 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
         and len(ids.intersection({"visual_layout", "course_structure", "audience_voice", "performance", "family_relation"})) >= 1
         and role_diversity >= 2
     )
-    mixed_corpus = (explicit_mixed_goal and role_diversity >= 2) or multi_dimension_mixed
+    mixed_corpus = (explicit_mixed_goal and role_diversity >= 2) or multi_dimension_mixed or (angle_discovery_requested and has_text and has_tabular)
     operational_intent = "operational_performance" in ids
     explicit_operational_business = bool(re.search(r"经营|订单|支付|销售|推广|广告|库存|退款|履约|店铺|商品|平台", goal, re.I))
     generic_tabular_intent = "generic_tabular" in ids or ("inventory_profile" in ids and has_tabular)
@@ -174,6 +176,8 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
         comparison_unit = "family_specific"
         sampling = "family_stratified"
         confidence = "high" if explicit_mixed_goal else "medium"
+        if angle_discovery_requested:
+            supporting.append("angle_discovery")
         if "method_extraction" in ids:
             supporting.append("method_corpus")
         if has_metrics or role_counts.get("tabular_data", 0):

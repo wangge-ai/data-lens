@@ -143,6 +143,13 @@ def read_xlsx_openpyxl(path: Path, max_rows: int | None) -> list[dict[str, Any]]
     sheets: list[dict[str, Any]] = []
     try:
         for worksheet in workbook.worksheets:
+            # Some WPS/Excel exports declare a stale A1-only dimension even
+            # though sheetData contains hundreds of populated rows. Read-only
+            # iteration trusts that declaration unless dimensions are reset.
+            # Resetting is safe here because max_rows still bounds the scan.
+            reset_dimensions = getattr(worksheet, "reset_dimensions", None)
+            if callable(reset_dimensions):
+                reset_dimensions()
             rows: list[list[Any]] = []
             for row_number, row in enumerate(worksheet.iter_rows(values_only=True), start=1):
                 if max_rows and row_number > max_rows:
@@ -335,7 +342,7 @@ def main() -> None:
         detected_format, sheets = read_workbook(source, args.max_rows, cache_dir)
         files.append({"path": str(source.resolve()), "format": detected_format, "sheets": sheets})
     payload = {
-        "table_parse_version": "1.2",
+        "table_parse_version": "1.3",
         "legacy_xls_cache": str((args.conversion_cache or (args.output.parent / ".data-lens-cache" / "xls")).resolve()),
         "coverage_boundary": "每个工作表都必须单独分配 analysis_role；candidate_role 只来自关键词，嵌入图片清单只证明存在媒体，不等于完成OCR或语义审核。",
         "files": files,
