@@ -15,6 +15,7 @@ DIMENSIONS: list[tuple[str, str, tuple[str, ...]]] = [
         r"自己(?:寻找|发现|生成|选择|筛选).{0,8}(?:分析)?角度",
         r"自己找角度", r"自动找角度", r"无预设(?:分析)?角度",
         r"不给.{0,8}(?:分析)?角度",
+        r"不交代.{0,8}(?:分析)?角度",
         r"不(?:提供|指定|预设).{0,8}(?:分析)?角度",
         r"先不(?:提供|指定|预设).{0,8}(?:分析)?角度",
         r"没想好.{0,8}(?:分析)?角度", r"不知道.{0,8}(?:怎么|如何)分析",
@@ -106,6 +107,8 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
     summary = inventory.get("summary") or {}
     extension_counts = summary.get("by_extension") or {}
     has_original_html = sum(int(extension_counts.get(extension, 0) or 0) for extension in (".html", ".htm", ".mhtml")) > 0
+    pdf_count = int(extension_counts.get(".pdf", 0) or 0)
+    has_pdf = pdf_count > 0
     has_visual = role_counts.get("visual_layout", 0) > 0 or has_original_html
     has_audience = role_counts.get("audience_voice", 0) > 0
     has_av = role_counts.get("audio_video", 0) > 0
@@ -223,8 +226,14 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
         text_count = int(role_counts.get("content_text") or 0)
         all_text_units_are_articles = article_count > 0 and article_count == text_count
         route = "same_author_content" if author_goal and all_text_units_are_articles else "qualitative_corpus"
-        comparison_unit = "article" if all_text_units_are_articles else "document_or_declared_case"
-        sampling = "full_census" if 0 < text_count <= 20 else "balanced_topic"
+        if has_pdf and not all_text_units_are_articles:
+            comparison_unit = "internal_project_or_chapter_pending_confirmation"
+            sampling = "pdf_structure_then_internal_unit_stratified"
+            supporting.extend(["pdf_structure_profile", "multimodal_evidence"])
+            missing.append("PDF 文件数不是分析单位数；先确认目录、项目或章节边界，再按内部单元分层，不能按物理文件数宣称全量")
+        else:
+            comparison_unit = "article" if all_text_units_are_articles else "document_or_declared_case"
+            sampling = "full_census" if 0 < text_count <= 20 else "balanced_topic"
         confidence = "high" if author_goal and all_text_units_are_articles else "medium"
         supporting.extend(["angle_discovery", "qualitative_framework"])
         if all_text_units_are_articles and not author_goal:

@@ -45,6 +45,7 @@ description: "面向智能体的证据型数据分析 Skill。用于分析表格
 
 1. 大批量或混合资料先运行 `python scripts/data_lens.py inventory ...`，再运行 `plan`。用户不需要亲自执行命令。
 2. 文件数不等于分析单位数。文章、评论、订单、商品、平台日、图片区域和视频片段必须分别定义。
+   PDF 合集还要先识别目录、页形变化与内部项目/章节；两份 PDF 不等于两个案例。无法从文本层确认边界时，先运行 `profile-pdf`，再用有界 OCR/视觉复核确认内部单元。
 3. 默认不顺序截取前几项。使用全量、分层、时间分布、主题平衡、表现对照或家族覆盖等明确策略。已完整人工确认的单元应排除出再次语义处理。
 4. 先运行确定性解析、去重、匹配、统计和质量检查；模型不得心算权威数字、补造缺失值或确认模糊匹配。
 5. 模型输出只是候选。正式发现必须依次通过格式适配、严格合同校验和证据校验，再写入采用账本。请求成功不等于结果采用成功。
@@ -71,6 +72,7 @@ description: "面向智能体的证据型数据分析 Skill。用于分析表格
 - 图片、PDF、音频和视频先建立可定位证据，再做语义分析；元数据、OCR、转录和实际语义审核是不同状态。
 - 本地图片 OCR 使用 `python scripts/data_lens.py ocr <image> --output <result.json>`；默认有界比较 PSM 6 与 11，保留全部候选、置信度和像素坐标。算法推荐候选仍是未审核文本，规则见 [references/multimodal-evidence.md](references/multimodal-evidence.md)。
 - PDF 使用 `python scripts/data_lens.py pdf <file.pdf> --output-dir <empty-directory>`；默认在全文均匀抽取至多 6 页，也可用 `--pages 1,3-5` 明确页码。每页保留原 PDF 哈希、页码、渲染图哈希、OCR 产物哈希和失败账本；不自动重试，不把抽样、渲染或 OCR 标成语义审核。
+- PDF 合集先使用 `python scripts/data_lens.py profile-pdf <files...> --output <profile.json>` 建立页数、页形、文本层状态和内部单元风险画像。推荐页码采用首页/页形变化/全文均布组合，只是结构试样；不得把文件数或抽样页数当作项目数。
 - 视频使用 `python scripts/data_lens.py video <file> --output-dir <empty-directory>`；默认在全时段均匀抽取至多 6 帧，也可用 `--timestamps 0.5,10,42.25` 指定秒数。每帧保留原媒体哈希、毫秒时间戳、帧哈希和失败账本。
 - 本地转录使用 `python scripts/data_lens.py transcribe <file> --output-dir <empty-directory> --model-checkpoint <local.pt>`。只接受已存在的本地 Whisper 检查点路径；默认最长 20 分钟，超长媒体必须同时指定 `--start-ms` 与 `--end-ms`。不得下载模型、自动换模型或把转录标成说话人/语义审核完成。
 - 任何外部模型、远程向量服务或网络发送，都必须在发送前获得当前任务的明确授权；不得自动探测、修复重试或上传原始资料。

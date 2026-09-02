@@ -1,0 +1,19 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.pdf_structure_profile",
+  "version": "0.1.0",
+  "status": "experimental",
+  "name": "PDF 合集结构画像与内部单元试样",
+  "purpose": "Distinguish physical PDF files, pages, and provisional internal units before sampling or angle discovery.",
+  "question_types": ["inventory", "multimodal_preparation", "sampling_design"],
+  "accepted_units": ["pdf_file", "pdf_page"],
+  "input_shapes": ["pdf_file", "pdf_compilation"],
+  "eligibility_checks": ["source PDF is readable", "pypdf is installed", "OCR pilot is bounded"],
+  "human_gates": ["confirm provisional internal units with OCR or visual review", "review structural pilot before semantic angle adoption"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/profile_pdf_corpus.py", "network_policy": "deny", "optional_dependencies": ["pypdf"]},
+  "outputs": ["per-page geometry", "text-layer screening state", "provisional unitization status", "bounded OCR page plan"],
+  "evidence_requirements": ["source PDF hash", "1-based page number", "page geometry", "text extraction diagnostic"],
+  "allowed_claims": ["physical page count", "page geometry", "text-layer screening state", "provisional internal-unit hypothesis", "bounded OCR page plan"],
+  "forbidden_claims": ["semantic chapter identity without review", "project count inferred only from file count", "full-document coverage from an OCR sample"],
+  "validation": {"status": "synthetic_and_real_shape", "fixtures": []}
+}

@@ -13,6 +13,7 @@ PYTHON_MODULES = {
     "duckdb": ("large_tabular", False, False, None),
     "pyarrow": ("columnar", False, False, None),
     "PIL": ("image", True, True, "scripts/multimodal_inventory.py"),
+    "pypdf": ("pdf_structure", True, True, "scripts/profile_pdf_corpus.py"),
     "sentence_transformers": ("semantic_embeddings", False, False, None),
     "chromadb": ("chroma_vector_store", False, False, None),
     "qdrant_client": ("qdrant_vector_store", False, False, None),

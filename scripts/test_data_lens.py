@@ -19,6 +19,7 @@ from materialize_run_context import build_context
 from parse_tabular_exports import legacy_xls_cache_path, read_workbook
 from plan_analysis import build_plan
 from profile_text_corpus import build_profile as build_text_profile
+from profile_pdf_corpus import _text_state as pdf_text_state, bounded_page_plan, profile_pdf
 from prepare_operational_run import prepare as prepare_operational_run
 from analyze_operational_facts import analyze as analyze_operational_facts
 from validate_operational_outputs import validate as validate_operational_outputs
@@ -342,6 +343,60 @@ class CorpusLensRegressionTests(unittest.TestCase):
         plan = build_plan("分析这批 HTML；不给预设分析角度，由 Data Lens 自动发现", inventory)
         self.assertEqual(plan["primary_route"], "qualitative_corpus")
         self.assertTrue(plan["angle_discovery"]["requested"])
+
+    def test_auto_angle_discovery_recognizes_not_explaining_angle_wording(self) -> None:
+        inventory = {
+            "summary": {"by_extension": {".pdf": 2}},
+            "files": [
+                {"canonical": True, "evidence_role": "content_text", "container_type": "document"},
+                {"canonical": True, "evidence_role": "content_text", "container_type": "document"},
+            ],
+        }
+        plan = build_plan("我还是不交代分析角度，让 Skill 自己升级自动分析能力", inventory)
+        self.assertEqual(plan["primary_route"], "qualitative_corpus")
+        self.assertTrue(plan["angle_discovery"]["requested"])
+        self.assertEqual(plan["comparison_unit"], "internal_project_or_chapter_pending_confirmation")
+        self.assertEqual(plan["recommended_sampling_strategy"], "pdf_structure_then_internal_unit_stratified")
+        self.assertIn("pdf_structure_profile", plan["supporting_modules"])
+
+    def test_pdf_structure_sampling_is_bounded_and_not_front_loaded(self) -> None:
+        selected = bounded_page_plan(315, maximum=12, priority_pages=[4, 120])
+        self.assertLessEqual(len(selected), 12)
+        self.assertEqual(selected[0], 1)
+        self.assertEqual(selected[-1], 315)
+        self.assertIn(120, selected)
+        self.assertTrue(any(page > 200 for page in selected))
+        long_page_selected = bounded_page_plan(76, maximum=12, priority_pages=list(range(1, 77)))
+        self.assertLessEqual(sum(page <= 10 for page in long_page_selected), 4)
+        self.assertTrue(any(30 <= page <= 50 for page in long_page_selected))
+        bounded_long_page_selected = bounded_page_plan(76, maximum=6, priority_pages=list(range(1, 77)))
+        self.assertEqual(len(bounded_long_page_selected), 6)
+        self.assertTrue(any(20 <= page <= 55 for page in bounded_long_page_selected))
+
+    def test_pdf_structure_flags_font_mapping_gibberish(self) -> None:
+        state, metrics = pdf_text_state("澳瀓巠揵䥛伄垈䌯㖣敩䒋孾姻澳垈䔦䒋濞嬩䳆揻⥭宒埪䒋⦥瀰")
+        self.assertEqual(state, "garbled_candidate")
+        self.assertLess(metrics["common_cjk_ratio"], 0.12)
+
+    def test_pdf_structure_profiles_long_pages_as_provisional_units(self) -> None:
+        try:
+            from pypdf import PdfWriter
+        except ImportError:
+            self.skipTest("pypdf is optional")
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "long-page-compilation.pdf"
+            writer = PdfWriter()
+            writer.add_blank_page(width=640, height=800)
+            writer.add_blank_page(width=640, height=5000)
+            writer.add_blank_page(width=640, height=6000)
+            with source.open("wb") as handle:
+                writer.write(handle)
+            profile = profile_pdf(source, max_ocr_pages=6)
+        self.assertEqual(profile["page_count"], 3)
+        self.assertEqual(profile["page_geometry_summary"]["long_page_count"], 2)
+        self.assertEqual(profile["unitization"]["status"], "provisional_page_units")
+        self.assertEqual(profile["recommended_render_dpi"], 72)
+        self.assertEqual(profile["recommended_ocr_page_cap"], 6)
 
     def test_text_profile_uses_verified_extracts_and_reports_visual_concentration(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
