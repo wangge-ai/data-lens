@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/angle-candidates.schema.json",
+  "title": "Data Lens Angle Candidate Batch 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision_question", "request", "candidates"],
+  "properties": {
+    "decision_question": {"type": "string", "minLength": 1},
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted", "succeeded", "request_count"],
+      "properties": {
+        "attempted": {"type": "boolean"},
+        "succeeded": {"type": "boolean"},
+        "provider": {"type": ["string", "null"]},
+        "request_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidate_id", "title", "question", "why_worthwhile", "analysis_unit", "required_evidence", "coverage_plan", "counterexample_check", "failure_condition", "evidence_refs", "proposed_status"],
+        "properties": {
+          "candidate_id": {"type": "string", "minLength": 1},
+          "title": {"type": "string", "minLength": 1},
+          "question": {"type": "string", "minLength": 1},
+          "why_worthwhile": {"type": "string", "minLength": 1},
+          "analysis_unit": {"type": "string", "minLength": 1},
+          "required_evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "coverage_plan": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["strategy", "eligible_units", "reviewed_units", "families_covered", "limitations"],
+            "properties": {
+              "strategy": {"type": "string", "minLength": 1},
+              "eligible_units": {"type": "integer", "minimum": 0},
+              "reviewed_units": {"type": "integer", "minimum": 0},
+              "families_covered": {"type": "array", "items": {"type": "string"}},
+              "limitations": {"type": "array", "items": {"type": "string"}}
+            }
+          },
+          "counterexample_check": {"type": "string", "minLength": 1},
+          "failure_condition": {"type": "string", "minLength": 1},
+          "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "proposed_status": {"enum": ["adopted", "rejected"]},
+          "rejection_reason": {"type": ["string", "null"]},
+          "decision_value": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

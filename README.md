@@ -35,6 +35,8 @@ Useful local commands:
 
 ```bash
 python scripts/data_lens.py capabilities
+python scripts/data_lens.py workbook-integrity <files.xlsx...> --output workbook-integrity.json
+python scripts/data_lens.py workbook-media <files.xlsx...> --manifest workbook-media.json --extract-sample --output-dir visual-sample
 python scripts/data_lens.py ocr <image> --output ocr-result.json
 python scripts/data_lens.py profile-pdf <files...> --output pdf-structure-profile.json
 python scripts/data_lens.py pdf <file.pdf> --output-dir pdf-evidence
@@ -43,6 +45,8 @@ python scripts/data_lens.py transcribe <media> --output-dir transcript-evidence 
 python scripts/data_lens.py test
 python scripts/data_lens.py inventory <source> --output inventory.json
 python scripts/data_lens.py plan --goal "your original question" --inventory inventory.json --output plan.json
+python scripts/data_lens.py compile-angles --candidates angle-candidates.json --evidence-cards evidence-cards.json --output angle-adoption-ledger.json
+python scripts/data_lens.py synthesis-context --ledger angle-adoption-ledger.json --output synthesis-context.json
 ```
 
 ## Optional capabilities

@@ -1,0 +1,19 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.workbook_integrity",
+  "version": "0.1.0",
+  "status": "experimental",
+  "name": "工作簿完整性与模板残留候选扫描",
+  "purpose": "Detect deterministic workbook defects and bounded review candidates before semantic analysis.",
+  "question_types": ["data_quality", "mixed_corpus_preparation", "tabular_analysis"],
+  "accepted_units": ["workbook", "worksheet", "cell"],
+  "input_shapes": ["xlsx_workbook", "xlsx_workbook_set"],
+  "eligibility_checks": ["source workbooks are readable", "openpyxl is installed", "cell scan budget is declared"],
+  "human_gates": ["review percent-format candidates against field definitions", "confirm configured or repeated text is outside the workbook scope before calling it contamination"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/profile_workbook_integrity.py", "network_policy": "deny", "optional_dependencies": ["openpyxl"]},
+  "outputs": ["formula error locations", "stale dimension diagnostics", "percent-format review candidates", "configured scope-conflict candidates", "cross-workbook repeat candidates"],
+  "evidence_requirements": ["workbook hash", "worksheet", "cell coordinate", "scan budget and truncation state"],
+  "allowed_claims": ["formula error cell state", "declared dimension is smaller than observed populated range", "candidate requires field-definition or scope review"],
+  "forbidden_claims": ["percent value above 100 percent is always wrong", "exact repetition proves contamination", "a configured term proves publication or business impact"],
+  "validation": {"status": "synthetic_and_real_shape", "fixtures": ["fixtures/workbooks"]}
+}

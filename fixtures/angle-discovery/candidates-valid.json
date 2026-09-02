@@ -1,0 +1,46 @@
+{
+  "decision_question": "What deserves analysis in this invented mixed corpus?",
+  "request": {"attempted": true, "succeeded": true, "provider": "synthetic-fixture", "request_count": 1},
+  "candidates": [
+    {
+      "candidate_id": "A-QUALITY",
+      "title": "Workbook evidence health",
+      "question": "Which workbook quality conditions can change how later analysis should be interpreted?",
+      "why_worthwhile": "Quality conditions can invalidate otherwise persuasive comparisons.",
+      "analysis_unit": "workbook and worksheet cell",
+      "required_evidence": ["source_metadata", "tabular_data"],
+      "coverage_plan": {
+        "strategy": "all eligible synthetic workbooks",
+        "eligible_units": 3,
+        "reviewed_units": 3,
+        "families_covered": ["F-SCOPE", "F-TABLE"],
+        "limitations": ["Repeated text still needs scope review."]
+      },
+      "counterexample_check": "A shared sentence may be an intentional common template.",
+      "failure_condition": "Reject the angle if the repeated text cannot be traced to more than one workbook.",
+      "evidence_refs": ["E-SCOPE", "E-QUALITY"],
+      "proposed_status": "adopted",
+      "decision_value": "high"
+    },
+    {
+      "candidate_id": "R-VISUAL-WINNER",
+      "title": "Best visual design",
+      "question": "Which workbook image is most effective?",
+      "why_worthwhile": "A winner could guide future design.",
+      "analysis_unit": "workbook media object",
+      "required_evidence": ["visual_layout", "performance_table"],
+      "coverage_plan": {
+        "strategy": "bounded visual sample",
+        "eligible_units": 10,
+        "reviewed_units": 0,
+        "families_covered": ["F-VISUAL"],
+        "limitations": ["No semantic review or performance labels exist."]
+      },
+      "counterexample_check": "An attractive image may perform poorly.",
+      "failure_condition": "Reject without reviewed images and matched performance outcomes.",
+      "evidence_refs": [],
+      "proposed_status": "rejected",
+      "rejection_reason": "The required visual and performance evidence is unavailable."
+    }
+  ]
+}

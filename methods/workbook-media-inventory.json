@@ -1,0 +1,19 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.workbook_media_inventory",
+  "version": "0.1.0",
+  "status": "experimental",
+  "name": "工作簿与 WPS 单元格图片清点",
+  "purpose": "Resolve WPS DISPIMG identifiers to archive media and create a bounded workbook/sheet-stratified extraction sample.",
+  "question_types": ["multimodal_preparation", "data_quality"],
+  "accepted_units": ["workbook_media_object", "worksheet_cell"],
+  "input_shapes": ["xlsx_workbook", "wps_xlsx_workbook"],
+  "eligibility_checks": ["source is an OOXML workbook", "archive members are readable", "extraction budget is positive"],
+  "human_gates": ["semantically review extracted images before using visual claims", "approve any expansion beyond the bounded sample"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/workbook_media.py", "network_policy": "deny", "optional_dependencies": ["openpyxl"]},
+  "outputs": ["media manifest", "DISPIMG cell locators", "source and media hashes", "bounded sample", "failure ledger"],
+  "evidence_requirements": ["workbook hash", "archive member", "media hash", "cell locator when available"],
+  "allowed_claims": ["media object exists", "WPS image id maps to an archive member", "sample covers declared workbook and sheet strata"],
+  "forbidden_claims": ["inventory equals semantic review", "bounded sample represents all visual content", "image existence proves effectiveness"],
+  "validation": {"status": "synthetic_and_real_shape", "fixtures": ["fixtures/workbooks"]}
+}

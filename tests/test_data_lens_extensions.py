@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import base64
+import copy
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 
@@ -15,11 +17,14 @@ sys.path.insert(0, str(SCRIPTS))
 
 from check_agent_compatibility import validate as validate_compatibility  # noqa: E402
 from check_public_tree import scan as scan_public_tree  # noqa: E402
+from build_synthesis_context import build_context  # noqa: E402
+from compile_angle_discovery import compile_angles  # noqa: E402
 from detect_capabilities import detect  # noqa: E402
 from local_vector_index import build_index, query_index  # noqa: E402
 from multimodal_inventory import collect  # noqa: E402
 from ocr_evidence import parse_tsv, run_ocr  # noqa: E402
 from pdf_evidence import build_pdf_evidence, page_indices, parse_page_spec, parse_pdfinfo  # noqa: E402
+from profile_workbook_integrity import profile_workbooks  # noqa: E402
 from plan_analysis import build_plan  # noqa: E402
 from r_method_runner import probe, validate_result  # noqa: E402
 from select_samples import build_sample  # noqa: E402
@@ -27,11 +32,178 @@ from tabular_analysis import anomaly_candidates, change_candidate, grouped, prof
 from transcribe_media import build_transcription_evidence, clip_bounds  # noqa: E402
 from validate_adoption_ledger import validate as validate_adoption  # noqa: E402
 from video_evidence import build_video_evidence, evenly_spaced_timestamps, parse_duration_ms, parse_timestamp_spec  # noqa: E402
+from workbook_media import bounded_media_sample, inventory_workbook_media  # noqa: E402
 
 
 ONE_PIXEL_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
 )
+
+
+class AngleDiscoveryExecutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.fixture_root = ROOT / "fixtures" / "angle-discovery"
+        self.candidates = json.loads((self.fixture_root / "candidates-valid.json").read_text(encoding="utf-8"))
+        self.evidence = json.loads((self.fixture_root / "evidence-cards.json").read_text(encoding="utf-8"))
+
+    def test_candidate_adapter_contract_evidence_and_adoption_are_separate(self) -> None:
+        ledger = compile_angles(self.candidates, self.evidence)
+        self.assertEqual(validate_adoption(ledger), [])
+        self.assertTrue(ledger["request"]["succeeded"])
+        self.assertEqual(ledger["summary"]["candidate_count"], 2)
+        self.assertEqual(ledger["summary"]["adopted_count"], 1)
+        self.assertTrue(ledger["candidates"][0]["contract_valid"])
+        self.assertTrue(ledger["candidates"][0]["evidence_valid"])
+        self.assertTrue(ledger["candidates"][0]["adopted"])
+        self.assertFalse(ledger["candidates"][1]["adopted"])
+        self.assertEqual(ledger["completion_status"], "partial")
+
+    def test_candidate_adapter_normalizes_bounded_model_aliases_before_validation(self) -> None:
+        canonical = copy.deepcopy(self.candidates)
+        first = canonical["candidates"][0]
+        first["id"] = first.pop("candidate_id")
+        first["status"] = first.pop("proposed_status")
+        first["reason"] = first.pop("why_worthwhile")
+        first["possible_counterexample"] = first.pop("counterexample_check")
+        payload = {
+            "decision_question": canonical["decision_question"],
+            "request": canonical["request"],
+            "angles": [first],
+        }
+        ledger = compile_angles(payload, self.evidence)
+        self.assertEqual(ledger["candidates"][0]["candidate_id"], "A-QUALITY")
+        self.assertTrue(ledger["candidates"][0]["contract_valid"])
+        self.assertTrue(ledger["candidates"][0]["adopted"])
+
+    def test_successful_candidate_response_does_not_adopt_unverified_evidence(self) -> None:
+        candidates = copy.deepcopy(self.candidates)
+        candidates["candidates"][0]["evidence_refs"] = ["E-UNREVIEWED"]
+        ledger = compile_angles(candidates, self.evidence)
+        candidate = ledger["candidates"][0]
+        self.assertTrue(ledger["request"]["succeeded"])
+        self.assertTrue(candidate["contract_valid"])
+        self.assertFalse(candidate["evidence_valid"])
+        self.assertFalse(candidate["adopted"])
+        self.assertEqual(ledger["completion_status"], "core_question_unanswered")
+
+    def test_failed_request_cannot_adopt_a_valid_angle(self) -> None:
+        candidates = copy.deepcopy(self.candidates)
+        candidates["request"]["succeeded"] = False
+        ledger = compile_angles(candidates, self.evidence)
+        self.assertFalse(ledger["candidates"][0]["adopted"])
+        self.assertIn("request_not_succeeded", ledger["candidates"][0]["rejection_reason"])
+
+    def test_missing_angle_contract_field_blocks_adoption(self) -> None:
+        candidates = copy.deepcopy(self.candidates)
+        candidates["candidates"][0]["analysis_unit"] = ""
+        ledger = compile_angles(candidates, self.evidence)
+        self.assertFalse(ledger["candidates"][0]["contract_valid"])
+        self.assertFalse(ledger["candidates"][0]["adopted"])
+
+    def test_angle_limits_fail_instead_of_order_truncation(self) -> None:
+        candidates = copy.deepcopy(self.candidates)
+        template = candidates["candidates"][1]
+        candidates["candidates"] = [dict(template, candidate_id=f"R-{index}") for index in range(9)]
+        with self.assertRaisesRegex(ValueError, "at most 8"):
+            compile_angles(candidates, self.evidence)
+
+    def test_synthesis_context_reads_verified_cards_only_with_budget(self) -> None:
+        ledger = compile_angles(self.candidates, self.evidence)
+        context = build_context(ledger, max_cards=1, max_chars=2_000)
+        self.assertEqual(context["contract_version"], "data-lens-synthesis-context/1.0")
+        self.assertEqual(context["budget"]["used_cards"], 1)
+        self.assertLessEqual(context["budget"]["used_chars"], 2_000)
+        self.assertEqual({card["evidence_id"] for card in context["verified_evidence_cards"]}, {"E-SCOPE"})
+        self.assertIn("card_budget", {item["reason"] for item in context["omitted"]})
+
+
+class WorkbookHardeningTests(unittest.TestCase):
+    def _rewrite_dimension(self, path: Path, value: str) -> None:
+        rewritten = path.with_name(path.stem + "-rewritten.xlsx")
+        with zipfile.ZipFile(path, "r") as source, zipfile.ZipFile(rewritten, "w") as target:
+            for item in source.infolist():
+                payload = source.read(item.filename)
+                if item.filename == "xl/worksheets/sheet1.xml":
+                    text = payload.decode("utf-8")
+                    text = text.replace('ref="A1:C2"', f'ref="{value}"')
+                    payload = text.encode("utf-8")
+                target.writestr(item, payload)
+        rewritten.replace(path)
+
+    def test_workbook_integrity_separates_errors_from_review_candidates(self) -> None:
+        try:
+            from openpyxl import Workbook
+        except ImportError:
+            self.skipTest("openpyxl unavailable")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            first = root / "alpha.xlsx"
+            second = root / "beta.xlsx"
+            for path in (first, second):
+                workbook = Workbook()
+                sheet = workbook.active
+                sheet["A1"] = "Invented reusable template sentence"
+                sheet["B2"] = 1.5
+                sheet["B2"].number_format = "0.00%"
+                sheet["C2"] = "#DIV/0!"
+                sheet["C2"].data_type = "e"
+                workbook.save(path)
+            self._rewrite_dimension(first, "A1")
+            rules = root / "rules.json"
+            rules.write_text(json.dumps({"rules": [{"rule_id": "scope", "workbook_pattern": "alpha", "forbidden_terms": ["template sentence"], "reason": "synthetic scope check"}]}), encoding="utf-8")
+            result = profile_workbooks([first, second], max_cells_per_sheet=100, term_rules=rules)
+            self.assertEqual(result["contract_version"], "data-lens-workbook-integrity/1.0")
+            self.assertEqual(result["totals"]["formula_errors"], 2)
+            self.assertEqual(result["totals"]["percent_format_candidates"], 2)
+            self.assertEqual(result["totals"]["configured_term_candidates"], 1)
+            self.assertEqual(result["totals"]["stale_dimension_sheets"], 1)
+            self.assertEqual(len(result["cross_workbook_repeat_candidates"]), 1)
+            self.assertIn("not confirmed semantic errors", result["interpretation_boundary"])
+
+    def test_wps_cell_images_are_located_and_sampled_across_sheets(self) -> None:
+        try:
+            from openpyxl import Workbook
+        except ImportError:
+            self.skipTest("openpyxl unavailable")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workbook_path = root / "synthetic-wps.xlsx"
+            workbook = Workbook()
+            workbook.active.title = "First"
+            workbook.active["A1"] = '=DISPIMG("ID_SYNTH_1",1)'
+            second = workbook.create_sheet("Second")
+            second["B2"] = '=DISPIMG("ID_SYNTH_2",1)'
+            workbook.save(workbook_path)
+            fixture_root = ROOT / "fixtures" / "workbooks"
+            with zipfile.ZipFile(workbook_path, "a") as archive:
+                archive.writestr("xl/cellimages.xml", (fixture_root / "wps-cellimages.xml").read_bytes())
+                archive.writestr("xl/_rels/cellimages.xml.rels", (fixture_root / "wps-cellimages.xml.rels").read_bytes())
+                archive.writestr("xl/media/synthetic1.png", ONE_PIXEL_PNG)
+                archive.writestr("xl/media/synthetic2.png", ONE_PIXEL_PNG)
+            output_dir = root / "sample"
+            result = inventory_workbook_media([workbook_path], output_dir, True, max_images=2, max_cells_per_sheet=100)
+            self.assertEqual(result["contract_version"], "data-lens-workbook-media/1.0")
+            self.assertEqual(len(result["media"]), 2)
+            self.assertEqual(len(result["sample"]["selected_media_ids"]), 2)
+            self.assertEqual({item["mapping_status"] for item in result["media"]}, {"located"})
+            self.assertEqual({item["locators"][0]["sheet"] for item in result["media"]}, {"First", "Second"})
+            self.assertTrue(all(item["extraction"]["status"] == "extracted" for item in result["media"]))
+            self.assertEqual(result["failure_ledger"], [])
+
+    def test_workbook_media_sample_is_spread_not_sequential_first_n(self) -> None:
+        entries = [
+            {
+                "media_id": f"WM-{index}",
+                "workbook_sha256": "synthetic",
+                "image_id": f"ID-{index}",
+                "archive_member": f"xl/media/image{index}.png",
+                "locators": [{"sheet": "Only", "cell": f"A{index}"}],
+            }
+            for index in range(1, 6)
+        ]
+        selected = bounded_media_sample(entries, 2)
+        self.assertEqual(selected, ["WM-3", "WM-1"])
+        self.assertNotEqual(selected, ["WM-1", "WM-2"])
 
 
 class CapabilityTests(unittest.TestCase):

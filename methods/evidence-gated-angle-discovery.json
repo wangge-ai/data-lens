@@ -1,0 +1,19 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.evidence_gated_angle_discovery",
+  "version": "0.1.0",
+  "status": "experimental",
+  "name": "证据门控的自动分析角度采用",
+  "purpose": "Convert semantic angle candidates into auditable adoptions only after deterministic adaptation, strict contract checks, and evidence validation.",
+  "question_types": ["open_ended_analysis", "mixed_corpus", "qualitative_corpus"],
+  "accepted_units": ["analysis_angle", "evidence_card"],
+  "input_shapes": ["model_candidate_json", "evidence_card_set"],
+  "eligibility_checks": ["original decision question is preserved", "candidate count is at most 8", "proposed adoption count is at most 4"],
+  "human_gates": ["semantic candidate generation or review", "confirm coverage and counterexample plans describe the actual corpus"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/compile_angle_discovery.py", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["contract errors", "evidence errors", "angle adoption ledger", "core-question status"],
+  "evidence_requirements": ["verified evidence card", "analysis unit", "coverage plan", "counterexample check", "failure condition"],
+  "allowed_claims": ["candidate passed or failed declared gates", "adopted angle has verified supporting evidence"],
+  "forbidden_claims": ["model request success equals adoption", "angle title alone proves answerability", "unverified evidence can support adoption"],
+  "validation": {"status": "synthetic_and_real_shape", "fixtures": ["fixtures/angle-discovery"]}
+}

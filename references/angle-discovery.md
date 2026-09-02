@@ -49,4 +49,16 @@
 → 只读取已验证证据卡的有界跨篇综合
 ```
 
+候选语义可以由宿主智能体提出，但不得由它自行宣布采用。候选批次遵守 `contracts/angle-candidates.schema.json`，然后运行：
+
+```text
+python scripts/data_lens.py compile-angles --candidates angle-candidates.json --evidence-cards evidence-cards.json --output angle-adoption-ledger.json
+python scripts/data_lens.py validate-adoption angle-adoption-ledger.json
+python scripts/data_lens.py synthesis-context --ledger angle-adoption-ledger.json --output synthesis-context.json --max-cards 24 --max-chars 24000
+```
+
+`compile-angles` 先适配字段，再逐候选完成合同和证据校验；请求失败、合同缺字段、未知证据或未验证证据都会阻止采用。不得按输入顺序静默截断超过 8 个候选或超过 4 个拟采用角度，输入超限时整批失败并要求重新筛选。
+
+`synthesis-context` 按采用角度轮换读取证据引用，只写入完整的已验证证据卡，并记录卡片与字符预算及所有遗漏。预算不足时跳过整张卡，不截断主张。最终综合不得重新读取原始语料、未采用候选或未验证卡来填补叙事。
+
 报告必须同时列出采用角度、拒绝角度及理由。核心问题只有在至少一个采用角度形成有效发现时才算得到回答；如果所有候选都缺证，状态必须是 `core_question_unanswered`。

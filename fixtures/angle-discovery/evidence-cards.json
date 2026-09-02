@@ -1,0 +1,33 @@
+{
+  "contract_version": "data-lens-evidence-cards/1.0",
+  "cards": [
+    {
+      "id": "E-SCOPE",
+      "claim": "The synthetic corpus contains three workbook families and all three were profiled.",
+      "source": "synthetic-inventory.json",
+      "locator": {"type": "json_pointer", "pointer": "/families"},
+      "verified": true,
+      "family_id": "F-SCOPE",
+      "lane": "source_metadata"
+    },
+    {
+      "id": "E-QUALITY",
+      "claim": "Two synthetic workbooks contain an identical invented template sentence.",
+      "source": "synthetic-workbook-integrity.json",
+      "locator": {"type": "json_pointer", "pointer": "/cross_workbook_repeat_candidates/0"},
+      "status": "derived_verified",
+      "family_id": "F-TABLE",
+      "lane": "tabular_data",
+      "caveat": "Exact repetition can be legitimate template reuse and is not confirmed contamination."
+    },
+    {
+      "id": "E-UNREVIEWED",
+      "claim": "An extracted synthetic image might contain a warning badge.",
+      "source": "synthetic-workbook-media.json",
+      "status": "not_reviewed",
+      "verified": false,
+      "family_id": "F-VISUAL",
+      "lane": "visual_layout"
+    }
+  ]
+}
