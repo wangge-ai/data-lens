@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
-from _common import file_sha256, write_json
+from _common import file_sha256, guard_cli_output, write_json
 
 
 NS = {
@@ -242,6 +242,7 @@ def main() -> None:
     parser.add_argument("--max-images", type=int, default=12)
     parser.add_argument("--max-cells-per-sheet", type=int, default=200_000)
     args = parser.parse_args()
+    guard_cli_output(parser, args.manifest, args.workbooks)
     payload = inventory_workbook_media(
         args.workbooks, args.output_dir, args.extract_sample, args.max_images, args.max_cells_per_sheet
     )

@@ -1,0 +1,72 @@
+{
+  "rubric_version": "data-lens-paired-analysis/0.2",
+  "purpose": "Blindly compare analysis value under the same source snapshot and base task. Length, headings, terminology, workflow artifacts, and visible audit detail do not earn points.",
+  "dimensions": [
+    {
+      "id": "core_problem_selection",
+      "points": 15,
+      "question": "Did the report identify the highest-leverage question or constraint rather than merely summarize prominent topics?"
+    },
+    {
+      "id": "cross_source_synthesis",
+      "points": 15,
+      "question": "Did it connect multiple sources or observations through a bounded relationship while preserving meaningful differences and exceptions?"
+    },
+    {
+      "id": "mechanism_and_causality",
+      "points": 20,
+      "question": "Did it explain how the proposed mechanism could generate the observations, distinguish description from causality, and avoid treating sequence or co-occurrence as proof?"
+    },
+    {
+      "id": "contradiction_and_dynamics",
+      "points": 10,
+      "question": "When warranted, did it locate the concrete carrier, feedback, trade-off, or stage shift that makes forces interact; when not warranted, did it abstain?"
+    },
+    {
+      "id": "competing_explanations",
+      "points": 15,
+      "question": "Did it present strong alternative explanations, counterexamples, and evidence or predictions that would distinguish them?"
+    },
+    {
+      "id": "decision_value",
+      "points": 15,
+      "question": "Do the priorities follow from the analysis, and can the proposed next action both improve the situation and test the judgment?"
+    },
+    {
+      "id": "coverage_and_calibration",
+      "points": 5,
+      "question": "Is coverage proportionate to the corpus, with material limits and uncertainty reflected in claim strength?"
+    },
+    {
+      "id": "reader_value",
+      "points": 5,
+      "question": "Is the report concise, concrete, and useful to the intended reader without exposing internal workflow clutter?"
+    }
+  ],
+  "score_anchors": {
+    "zero": "Absent, contradicted by the source, or actively misleading.",
+    "half": "Present but generic, weakly evidenced, poorly bounded, or not decision-relevant.",
+    "full": "Specific, source-grounded, bounded, robust to strong alternatives, and materially useful."
+  },
+  "severe_failures": [
+    "read or relied on the competing output, a prior report, or the scoring rubric before freezing the candidate",
+    "invented a source, fact, quantity, quotation, or observation",
+    "presented causality based only on co-occurrence, sequence, frequency, or rhetorical plausibility",
+    "forced a structural contradiction without a shared carrier, interaction, feedback, or stage condition",
+    "ignored material counterevidence or silently excluded inconvenient sources",
+    "let candidate identity, method name, report length, or visible process artifacts affect the score",
+    "redistributed private or copyrighted source material without authorization"
+  ],
+  "material_gain_signal": {
+    "paired_score_delta": 5,
+    "minimum_depth_dimensions_won": 2,
+    "depth_dimensions": [
+      "core_problem_selection",
+      "cross_source_synthesis",
+      "mechanism_and_causality",
+      "contradiction_and_dynamics",
+      "competing_explanations"
+    ],
+    "note": "This is an interpretation aid for repeated evaluation, not a release gate or guarantee."
+  }
+}

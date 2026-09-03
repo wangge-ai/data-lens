@@ -1,0 +1,20 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.chatlab_corpus_profile",
+  "version": "0.1.0",
+  "status": "experimental",
+  "name": "ChatLab 会话去重、画像与分层审阅包",
+  "question_types": ["inventory", "description", "comparison", "angle_discovery_support"],
+  "accepted_units": ["conversation_export", "conversation", "message"],
+  "input_shapes": ["chatlab_wechat_json_export", "directory_containing_chatlab_exports"],
+  "eligibility_checks": ["JSON contains meta, members, and messages", "message records are local and readable", "source scope is authorized"],
+  "assumptions": ["export identifiers and timestamps can group candidate conversations without treating exports as independent evidence"],
+  "human_gates": ["host reviews stratified samples", "host defines semantic families", "host reviews private-content disclosure"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/profile_chatlab_corpus.py", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["canonical conversation profile", "variant export ledger", "conversation type aggregates", "bounded semantic review samples", "failure ledger"],
+  "diagnostics": ["parse failures, duplicate variants, malformed messages, and sample coverage"],
+  "evidence_requirements": ["source SHA-256", "message JSON pointer", "conversation-level independence group"],
+  "allowed_claims": ["deterministic counts and rates", "bounded candidate selection", "observed source and version structure"],
+  "forbidden_claims": ["lexical cues are semantic themes", "chat frequency proves popularity", "all conversations share one problem", "sender personality or motive"],
+  "validation": {"status": "regression_tested", "fixtures": ["fixtures/chatlab"]}
+}

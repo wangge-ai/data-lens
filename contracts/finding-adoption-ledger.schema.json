@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/finding-adoption-ledger.schema.json",
+  "title": "Data Lens Finding Adoption Ledger 1.0",
+  "type": "object",
+  "required": ["contract_version", "decision_question", "request", "scope_gate", "evidence_index", "candidates", "summary", "completion_status"],
+  "properties": {
+    "contract_version": {"const": "data-lens-finding-adoption-ledger/1.0"},
+    "decision_question": {"type": "string", "minLength": 1},
+    "request": {"type": "object"},
+    "scope_gate": {"type": "object"},
+    "evidence_index": {"type": "object"},
+    "candidates": {"type": "array"},
+    "summary": {
+      "type": "object",
+      "required": ["candidate_count", "adopted_count", "anchor_finding_count", "core_question_answered"],
+      "properties": {
+        "candidate_count": {"type": "integer", "minimum": 0},
+        "adopted_count": {"type": "integer", "minimum": 0},
+        "anchor_finding_count": {"type": "integer", "minimum": 0},
+        "core_question_answered": {"type": "boolean"}
+      }
+    },
+    "completion_status": {"enum": ["preliminary", "partial", "core_question_unanswered"]}
+  }
+}

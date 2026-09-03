@@ -1,0 +1,69 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.cognitive_engine_router",
+  "version": "0.2.0",
+  "status": "experimental",
+  "name": "认知引擎路由器",
+  "purpose": "Select the smallest useful reasoning engine after the primary evidence route has established the analysis unit, observable phenomenon, and evidence boundary; require the engine to reconstruct the problem or produce a discriminating prediction rather than merely restate the host model's ordinary explanation.",
+  "question_types": ["problem_discovery", "explanation", "decision", "planning"],
+  "accepted_units": ["decision_question", "verified_observation", "candidate_problem", "analysis_plan"],
+  "input_shapes": ["original_decision_question", "primary_route", "analysis_units", "deterministic_baseline", "evidence_coverage"],
+  "eligibility_checks": [
+    "the primary route and analysis unit are already identified",
+    "the selected corpus or evidence scope is ready for analysis",
+    "an additional reasoning engine could produce a structurally different candidate, a discriminating test, a concrete coupling carrier, or an observable priority switch condition"
+  ],
+  "assumptions": [
+    "file format determines evidence preparation, while the decision problem determines reasoning",
+    "engine selection is provisional and may return abstained, insufficient_evidence, or not_applicable",
+    "selection does not adopt an angle, finding, mechanism, or causal claim",
+    "adding only cautions or formatting completeness is not a cognitive-engine contribution"
+  ],
+  "human_gates": [],
+  "implementation": {
+    "runtime": "host_agent",
+    "entrypoint": "references/cognitive-engine-router.md",
+    "network_policy": "deny",
+    "optional_dependencies": []
+  },
+  "outputs": [
+    "ranked decision-relevant problem map",
+    "ordinary explanation and any structurally different candidate with divergent predictions",
+    "selected cognitive engine or explicit abstention",
+    "reason for selection and expected decision contribution",
+    "exit condition and unresolved evidence need"
+  ],
+  "diagnostics": [
+    "scope not ready",
+    "no observable phenomenon for the proposed engine",
+    "ordinary route already answers the question",
+    "candidate only renames the ordinary explanation",
+    "selected engine produced no discriminating candidate"
+  ],
+  "evidence_requirements": [
+    "the original decision question",
+    "an explicit analysis unit and system scope",
+    "at least one locatable observed phenomenon for any selected engine",
+    "source-role and conflict mapping when the evidence is multi-source",
+    "a statement of what the engine cannot establish"
+  ],
+  "allowed_claims": [
+    "a named reasoning engine is worth trying for the current observed problem",
+    "no additional cognitive engine is needed",
+    "the evidence is insufficient to select an engine",
+    "an engine candidate should be abandoned because it adds no testable decision value",
+    "a different observation would reverse the current problem or action ranking"
+  ],
+  "forbidden_claims": [
+    "keywords alone determine engine selection",
+    "engine selection answers the user's question",
+    "every deep analysis must use every available engine",
+    "an engine name or intellectual source proves a mechanism",
+    "restating the ordinary explanation in theoretical language is a deep finding",
+    "scope and evidence readiness can be bypassed for a more interesting analysis"
+  ],
+  "validation": {
+    "status": "fixture_only",
+    "fixtures": ["fixtures/contradiction-analysis"]
+  }
+}

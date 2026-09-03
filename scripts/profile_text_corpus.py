@@ -7,7 +7,7 @@ import statistics
 from pathlib import Path
 from typing import Any
 
-from _common import file_sha256, load_json, write_json
+from _common import file_sha256, guard_cli_output, load_json, write_json
 
 
 DATE_RE = re.compile(r"^\[(\d{8})\d{4}\]")
@@ -75,6 +75,7 @@ def main() -> None:
     parser.add_argument("extract_manifest", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    guard_cli_output(parser, args.output, [args.extract_manifest])
     result = build_profile(load_json(args.extract_manifest))
     write_json(args.output, result)
     print(json.dumps({"output": str(args.output.resolve()), **result["summary"]}, ensure_ascii=False))

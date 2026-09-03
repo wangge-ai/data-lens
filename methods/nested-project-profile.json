@@ -1,0 +1,20 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.nested_project_profile",
+  "version": "1.0.0",
+  "status": "validated",
+  "name": "嵌套项目与实现成熟度画像",
+  "question_types": ["inventory", "description", "evaluation"],
+  "accepted_units": ["source_container", "nested_project", "skill_directory"],
+  "input_shapes": ["mixed_corpus_inventory"],
+  "eligibility_checks": ["inventory includes source paths", "nested project has an explicit project or plugin marker"],
+  "assumptions": ["declared project markers identify candidate roots but do not prove implementation maturity"],
+  "human_gates": ["confirm semantic project purpose", "do not infer adoption or effectiveness from implementation counts"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/profile_nested_projects.py", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["nested project roots", "component coverage", "artifact implementation roles", "declared skill maturity profile"],
+  "diagnostics": ["missing markers, unresolved components, and incomplete project coverage"],
+  "evidence_requirements": ["inventory path", "project marker", "declared skill path when present"],
+  "allowed_claims": ["mechanically observed project structure and implementation layers"],
+  "forbidden_claims": ["file count proves quality", "code or sample presence proves adoption", "route tests prove business effectiveness"],
+  "validation": {"status": "regression_tested", "fixtures": ["scripts/test_data_lens.py"]}
+}

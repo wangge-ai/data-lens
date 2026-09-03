@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from _common import SKILL_NAME, SKILL_VERSION, file_sha256, load_json, write_json
+from _common import SKILL_NAME, SKILL_VERSION, file_sha256, guard_cli_output, load_json, write_json
 from validate_deep_analysis import validate_analysis
 
 
@@ -606,7 +606,9 @@ def build_manifest(data: dict[str, Any], analysis_path: Path, validation_path: P
     outputs = [record(output_dir / "report.html"), record(output_dir / "report.md")]
     evidence_positions = [{"evidence_id": item.get("id"), "source_path": item.get("source_path"), "locator": item.get("locator")} for item in data.get("evidence", [])]
     pipeline_steps = list(dict.fromkeys([*context.get("pipeline_steps", ["materialize_run_context.py"]), "validate_deep_analysis.py", "render_report.py"]))
-    return {"manifest_version": "2.3" if data.get("contract_version") == "2.3" else "2.2", "generated_at": datetime.now().astimezone().isoformat(), "skill_name": context.get("skill_name", SKILL_NAME), "skill_version": context.get("skill_version", SKILL_VERSION), "route": data.get("route"), "report_depth": data.get("report_depth"), "completion_status": data.get("completion_status", "legacy"), "analysis_artifact": record(analysis_path), "analysis_validation": record(validation_path), "run_context": record(context_path), "method_loads": context.get("method_loads", []), "deterministic_artifacts": context.get("artifact_inputs", []), "evidence_positions": evidence_positions, "pipeline_steps": pipeline_steps, "outputs": outputs}
+    contract_version = str(data.get("contract_version") or "")
+    manifest_version = contract_version if contract_version in {"2.3", "2.4"} else "2.2"
+    return {"manifest_version": manifest_version, "generated_at": datetime.now().astimezone().isoformat(), "skill_name": context.get("skill_name", SKILL_NAME), "skill_version": context.get("skill_version", SKILL_VERSION), "route": data.get("route"), "report_depth": data.get("report_depth"), "completion_status": data.get("completion_status", "legacy"), "analysis_artifact": record(analysis_path), "analysis_validation": record(validation_path), "run_context": record(context_path), "method_loads": context.get("method_loads", []), "deterministic_artifacts": context.get("artifact_inputs", []), "evidence_positions": evidence_positions, "pipeline_steps": pipeline_steps, "outputs": outputs}
 
 
 def main() -> None:
@@ -616,6 +618,9 @@ def main() -> None:
     parser.add_argument("--analysis-validation", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
+    sources = [args.deep_analysis, args.run_context, args.analysis_validation]
+    for name in ("report.html", "report.md", "run_manifest.json"):
+        guard_cli_output(parser, args.output_dir / name, sources)
     data = load_json(args.deep_analysis)
     context = load_json(args.run_context)
     validation = load_json(args.analysis_validation)

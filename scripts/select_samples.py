@@ -6,7 +6,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-from _common import classify_title, load_json, safe_number, write_json
+from _common import classify_title, guard_cli_output, load_json, safe_number, write_json
 
 
 STRATEGIES = {
@@ -15,6 +15,9 @@ STRATEGIES = {
 }
 ANALYSIS_UNITS = {"auto", "article", "document", "workbook", "table", "image", "recording", "source_container"}
 ARTICLE_EXTENSIONS = {".md", ".txt", ".html", ".htm", ".mhtml"}
+STRONG_PROJECT_MARKERS = {"pyproject.toml", "package.json", "cargo.toml", "go.mod"}
+PLUGIN_MARKER_DIRS = {".codebuddy-plugin", ".codex-plugin"}
+PROJECT_COMPONENT_DIRS = {"skills", "modules", "packages", "plugins"}
 
 
 def source_bucket(path_value: Any, inventory: dict[str, Any]) -> str:
@@ -34,10 +37,75 @@ def source_bucket(path_value: Any, inventory: dict[str, Any]) -> str:
     return path.parent.name or "未识别目录"
 
 
+def _is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.resolve().relative_to(parent.resolve())
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def discover_project_anchors(inventory: dict[str, Any]) -> list[Path]:
+    """Find nested installable/code project roots from inventory paths without reading source content."""
+    strong: set[Path] = set()
+    weak: set[Path] = set()
+    for item in inventory.get("files", []):
+        path = Path(str(item.get("path") or ""))
+        name = path.name.lower()
+        parent_name = path.parent.name.lower()
+        if name == "plugin.json" and parent_name in PLUGIN_MARKER_DIRS:
+            strong.add(path.parent.parent)
+        elif name in STRONG_PROJECT_MARKERS:
+            if not any(part.lower() in {"node_modules", "vendor", ".venv", "site-packages"} for part in path.parts):
+                strong.add(path.parent)
+        elif name == "skill.md":
+            weak.add(path.parent)
+
+    # Prefer the outer project marker so package members are not mistaken for hundreds of projects.
+    strong_sorted = sorted(strong, key=lambda path: (len(path.parts), str(path).lower()))
+    retained_strong: list[Path] = []
+    for candidate in strong_sorted:
+        if not any(_is_relative_to(candidate, existing) for existing in retained_strong):
+            retained_strong.append(candidate)
+    retained_weak = [
+        candidate for candidate in sorted(weak, key=lambda path: (len(path.parts), str(path).lower()))
+        if not any(_is_relative_to(candidate, existing) for existing in retained_strong)
+    ]
+    return retained_strong + retained_weak
+
+
+def project_bucket(path_value: Any, inventory: dict[str, Any], anchors: list[Path]) -> tuple[str | None, str | None]:
+    path = Path(str(path_value or ""))
+    containing = [anchor for anchor in anchors if _is_relative_to(path, anchor)]
+    if not containing:
+        return None, None
+    anchor = max(containing, key=lambda value: len(value.parts))
+    roots = [Path(value) for value in inventory.get("supplied_paths", []) if value]
+    label = str(anchor)
+    for root in sorted(roots, key=lambda value: len(value.parts), reverse=True):
+        try:
+            label = str(anchor.resolve().relative_to(root.resolve())) or anchor.name
+            break
+        except (OSError, ValueError):
+            continue
+    try:
+        relative = path.resolve().relative_to(anchor.resolve())
+    except (OSError, ValueError):
+        return label, f"{label}::[unknown]"
+    if not relative.parts:
+        component = "[root]"
+    elif relative.parts[0].lower() in PROJECT_COMPONENT_DIRS and len(relative.parts) > 2:
+        component = f"{relative.parts[0]}/{relative.parts[1]}"
+    else:
+        component = relative.parts[0]
+    return label, f"{label}::{component}"
+
+
 def infer_business_role(item: dict[str, Any]) -> str:
     text = f"{item.get('path', '')} {item.get('title', '')}".lower()
     role = str(item.get("evidence_role") or "unclassified")
     suffix = str(Path(str(item.get("path") or "")).suffix).lower()
+    name = Path(str(item.get("path") or "")).name.lower()
     if re.search(r"股票|证券|k线|均线|涨停|选股|stocks?", text, re.I):
         return "股票与投资研究"
     if role == "audience_voice":
@@ -68,7 +136,9 @@ def infer_business_role(item: dict[str, Any]) -> str:
         return "待映射视觉资产"
     if role == "audio_video":
         return "视频成品与演示"
-    if re.search(r"skill|技能", text, re.I):
+    if suffix in {".zip", ".rar", ".7z", ".exe", ".rp", ".db"} or name.endswith(".min.js"):
+        return "程序依赖与归档"
+    if name in {"skill.md", "blade.md"} or re.search(r"skill|技能", text, re.I):
         return "可复用Skill与方法"
     if re.search(r"rpa|xpath|自动化|工作流|workflow|扣子", text, re.I):
         return "自动化与智能体工作流"
@@ -80,8 +150,6 @@ def infer_business_role(item: dict[str, Any]) -> str:
         return "电商市场研究"
     if re.search(r"主图|详情页|作图|生图|提示词|aigc", text, re.I):
         return "电商视觉与创意"
-    if suffix in {".zip", ".rar", ".7z", ".exe", ".rp", ".db"}:
-        return "程序包与归档"
     if role == "content_text":
         category = classify_title(str(item.get("title") or ""))
         return category if category != "其他" else "通用AI资料"
@@ -126,6 +194,7 @@ def selectable_sources(
         raise ValueError(f"invalid analysis unit: {analysis_unit}")
     exclusions: Counter[str] = Counter()
     raw: list[dict[str, Any]] = []
+    project_anchors = discover_project_anchors(inventory)
     for item in inventory.get("files", []):
         source_identity = str(item.get("source_container_id") or item.get("path") or "")
         review_status = str(item.get("manual_review_status") or item.get("human_review_status") or "").lower()
@@ -147,6 +216,7 @@ def selectable_sources(
             continue
         title = item.get("title") or item.get("name") or ""
         kind = inferred_container_type(item)
+        nested_project, project_component = project_bucket(item.get("path"), inventory, project_anchors)
         raw.append(
             {
                 "source_container_id": item.get("source_container_id"),
@@ -162,6 +232,8 @@ def selectable_sources(
                 "capture_session_key": item.get("capture_session_key"),
                 "capture_session_relation": item.get("capture_session_relation"),
                 "top_level_bucket": source_bucket(item.get("path"), inventory),
+                "nested_project_bucket": nested_project,
+                "project_component_bucket": project_component,
                 "requires_unit_review": True,
                 "provisional_analysis_unit": "article" if kind == "article_candidate" else kind,
                 "size_bytes": item.get("size_bytes") or 0,
@@ -278,10 +350,16 @@ def family_stratified(items: list[dict[str, Any]], count: int) -> list[dict[str,
     enriched = [{**item, "provisional_family": provisional_family(item)} for item in items]
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     directory_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    project_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    component_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     ordered_items = sorted(enriched, key=lambda row: (row.get("publish_date") or "", row.get("size_bytes") or 0, row.get("title") or ""), reverse=True)
     for item in ordered_items:
         groups[str(item["provisional_family"])].append(item)
         directory_groups[str(item.get("top_level_bucket") or "未识别目录")].append(item)
+        if item.get("nested_project_bucket"):
+            project_groups[str(item["nested_project_bucket"])].append(item)
+        if item.get("project_component_bucket"):
+            component_groups[str(item["project_component_bucket"])].append(item)
     selected: list[dict[str, Any]] = []
     selected_ids: set[str] = set()
 
@@ -298,6 +376,20 @@ def family_stratified(items: list[dict[str, Any]], count: int) -> list[dict[str,
     # Then cover every business family before allocating the remaining budget by round robin.
     for family in sorted(groups, key=lambda key: (-len(groups[key]), key)):
         for item in groups[family]:
+            if str(item.get("source_container_id") or item.get("path")) not in selected_ids:
+                add(item)
+                break
+
+    # Nested installable/code projects need their own coverage; top-level directory coverage is too coarse.
+    for project in sorted(project_groups, key=lambda key: (-len(project_groups[key]), key)):
+        for item in project_groups[project]:
+            if str(item.get("source_container_id") or item.get("path")) not in selected_ids:
+                add(item)
+                break
+
+    # Within a project, cover major components (and individual skill folders) before round-robin expansion.
+    for component in sorted(component_groups, key=lambda key: (-len(component_groups[key]), key)):
+        for item in component_groups[component]:
             if str(item.get("source_container_id") or item.get("path")) not in selected_ids:
                 add(item)
                 break
@@ -470,8 +562,37 @@ def build_sample(
     if missed_directories:
         warnings.append("以下明确输入目录没有样本：" + "、".join(missed_directories))
 
+    eligible_project_counts = Counter(str(item.get("nested_project_bucket")) for item in sources if item.get("nested_project_bucket"))
+    selected_project_counts = Counter(str(item.get("nested_project_bucket")) for item in selected if item.get("nested_project_bucket"))
+    nested_project_coverage = [
+        {
+            "project": project,
+            "eligible_count": eligible_count,
+            "selected_count": selected_project_counts.get(project, 0),
+            "coverage_status": "covered" if selected_project_counts.get(project, 0) else "not_selected",
+        }
+        for project, eligible_count in sorted(eligible_project_counts.items())
+    ]
+    eligible_component_counts = Counter(str(item.get("project_component_bucket")) for item in sources if item.get("project_component_bucket"))
+    selected_component_counts = Counter(str(item.get("project_component_bucket")) for item in selected if item.get("project_component_bucket"))
+    project_component_coverage = [
+        {
+            "component": component,
+            "eligible_count": eligible_count,
+            "selected_count": selected_component_counts.get(component, 0),
+            "coverage_status": "covered" if selected_component_counts.get(component, 0) else "not_selected",
+        }
+        for component, eligible_count in sorted(eligible_component_counts.items())
+    ]
+    missed_projects = [item["project"] for item in nested_project_coverage if item["coverage_status"] == "not_selected"]
+    missed_components = [item["component"] for item in project_component_coverage if item["coverage_status"] == "not_selected"]
+    if missed_projects:
+        warnings.append("以下嵌套项目没有样本：" + "、".join(missed_projects))
+    if missed_components:
+        warnings.append(f"有{len(missed_components)}个嵌套项目组件未覆盖；扩样前不得把项目样本称为项目全貌")
+
     return {
-        "selection_version": "1.3",
+        "selection_version": "1.4",
         "strategy": effective,
         "requested_count": count,
         "eligible_count": len(eligible) if effective == "performance_contrast" else len(sources),
@@ -484,6 +605,8 @@ def build_sample(
         "selected_category_counts": dict(sorted(category_counts.items())),
         "family_coverage": family_coverage,
         "directory_coverage": directory_coverage,
+        "nested_project_coverage": nested_project_coverage,
+        "project_component_coverage": project_component_coverage,
         "expansion_rule": "每个家族先完成小批语义阅读；若连续两个批次仍出现新的方法、条件、冲突或资料角色则继续扩样，否则记录稳定状态。全量很小时直接普查。",
         "bias_warnings": list(dict.fromkeys(warnings)),
         "selected": selected,
@@ -501,6 +624,11 @@ def main() -> None:
     parser.add_argument("--completed-units", type=Path, help="JSON array or object with completed source IDs/paths to skip")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    guard_cli_output(
+        parser,
+        args.output,
+        [args.inventory, *([args.matched] if args.matched else []), *([args.completed_units] if args.completed_units else [])],
+    )
     completed_units: set[str] | None = None
     if args.completed_units:
         payload = load_json(args.completed_units)

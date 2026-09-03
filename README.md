@@ -1,23 +1,113 @@
 # Data Lens
 
-Data Lens is an evidence-grounded data-analysis Skill for AI agents. It helps Codex, Claude Code, and WorkBuddy/CodeBuddy inspect mixed inputs, choose eligible methods, separate deterministic computation from interpretation, and deliver findings that remain traceable to source evidence.
+Data Lens 是给 Codex、Claude Code 和 WorkBuddy/CodeBuddy 使用的通用深度分析 Skill。它不替代宿主模型的智力，而是把模型容易“想到但没稳定做到”的动作组织起来：自己找关键问题、连接多份材料、比较竞争解释、识别真实制约与阶段变化，再把结论落到可验证的行动上。
 
-Data Lens is a Skill, not a web application. It does not ship a browser workbench, API server, project database, provider console, or automatic external-model calls.
+它不是 Excel 专用工具，也不是本地 Web 应用。表格、文章、访谈、案例、PDF、图片、音频、视频和混合资料都可以是输入；文件格式只决定如何读取，用户要做的判断才决定分析方法。
 
-Maintained by **Wangge**. The intended public home is `wangge-ai/data-lens`.
+## 30 秒上手
 
-## What it analyzes
+把仓库克隆到宿主的 Skill 目录。以 Codex 为例：
 
-- structured tables and repeated operational exports;
-- articles, comments, interviews, cases, and document corpora;
-- images, PDF pages, audio, video, and mixed evidence;
-- time changes, comparisons, anomalies, and method corpora;
-- large corpora through optional local vector retrieval;
-- registered statistical methods through an optional R adapter.
+```powershell
+git clone https://github.com/wangge-ai/data-lens.git "$env:USERPROFILE\.codex\skills\data-lens"
+```
 
-## Install
+重新打开一个任务，然后直接说：
 
-Clone this repository into the user-level Skill directory used by your agent:
+```text
+使用 $data-lens 深度分析 D:\资料目录。我不提供分析角度，请先自己找重点，最后只给我面向读者的关键结论和行动建议。
+```
+
+就这些。用户不需要先学习命令，也不需要复制一整套分析框架。
+
+## 要不要把提示词一起给别人
+
+不用另发一份“神秘长提示词”。仓库里的 `SKILL.md` 就是可版本管理、可更新的长期提示与执行协议；README 只负责告诉用户怎样触发它。
+
+最短调用只需要两样东西：资料位置和你想解决的问题。问题尚不清楚时，也可以明确让它自己找角度：
+
+```text
+使用 $data-lens 看这个文件夹。资料很多，我暂时不给角度；请判断这里最值得回答的问题是什么，再做深度分析。
+```
+
+提示词写得更长，主要是为了补充业务目标和交付偏好，不是为了重新实现 Skill。
+
+## 它比裸智能体多做什么
+
+裸 Codex 本来就可能写出很好的分析，Data Lens 不承诺每次获胜。它的价值是把下面这些高价值动作做得更稳定，并把“这次到底有没有增量”放进公开评测：
+
+| 分析环节 | 裸智能体常见表现 | Data Lens 增量 |
+|---|---|---|
+| 用户不给角度 | 直接选一个看起来合理的主题 | 先比较候选问题的决策影响、解释覆盖和可回答性 |
+| 多份材料的共同点 | 按主题相似度归纳 | 区分来源角色、独立证据、重复材料、冲突和例外 |
+| 问题本质 | 给出一个最连贯的解释 | 保留普通解释 `E0`，只有结构不同且产生不同预测的 `E1` 才算新增洞察 |
+| 矛盾与制约 | 容易把两个目标或两种意见写成“矛盾” | 要求具体共同载体、反馈、异质反应或阶段转换；证据不够时允许弃权 |
+| 因果性 | 连贯叙事可能被写成因果 | 把事实、关系、机制假设和因果结论分开，主动找反例和竞争解释 |
+| 行动建议 | 给出合理建议 | 区分“长期真正卡住什么”和“现在为什么先做另一件事”，优先设计既改善结果又检验判断的动作 |
+| 交付 | 一份可读回答 | 读者只看结论；需要复核时再查看证据位置、计算明细和运行清单 |
+
+真正的差异不应该是报告更长、术语更多或流程文件更多，而应该是：抓到裸模型漏掉的结构、提出能被新证据推翻的预测，或者更早放弃一个看似漂亮但站不住的解释。
+
+## 自然语言示例
+
+### 一批文章，不给角度
+
+```text
+使用 $data-lens 分析这个公众号文章文件夹。我不预设角度，请找出跨文章反复出现但表面不明显的共同机制、关键变化和真正的内容瓶颈。正文不要展示内部审计过程。
+```
+
+### 多种资料混在一起
+
+```text
+使用 $data-lens 分析这个项目目录。先判断哪些资料实际在回答同一个问题，别因为它们放在同一文件夹就强行综合；然后找出最关键的跨来源关系和缺口。
+```
+
+### 已有一个业务问题
+
+```text
+使用 $data-lens 分析这些访谈、方案和经营记录。我要决定下一季度先解决增长、交付还是产品定位。请区分表面症状、结构性制约和当前行动优先级，并告诉我什么新证据会改变排序。
+```
+
+### 表格只是证据的一部分
+
+```text
+使用 $data-lens 把这些销售表、退款记录和客服访谈放在一起分析。不要只做指标汇总；我要知道哪些关系跨来源成立、哪些只是口径或渠道结构造成的假象。
+```
+
+## 可选的进阶任务卡
+
+复杂任务可以补充下面五项。没写的部分由 Skill 自行判断，不必全部填满。
+
+```text
+使用 $data-lens 分析：<资料位置>
+我要做的决定：<最终要选什么、改什么或判断什么>
+主要读者：<老板、运营、研究者、普通读者等>
+必须覆盖：<对象、时期、地区或来源>
+交付偏好：<只要读者报告 / 同时要明细表 / 需要可执行试验>
+```
+
+如果你真的没有分析角度，就不要硬填“我要做的决定”，直接让 Data Lens 先给出候选问题及选择理由。
+
+## 已揭盲的前后对比
+
+2026-09-03，我们用两批历史真实资料做了当前版本成对盲测。两组候选使用相同资料、相同基础任务和同一宿主默认模型；区别只有一组调用 Data Lens 0.8.1，另一组明确不用任何 Skill。独立评审在保存分数前不知道 A/B 身份。
+
+| 真实案例 | 裸 Codex | Data Lens 0.8.1 | 差值 |
+|---|---:|---:|---:|
+| 同一账号 72 篇 MHTML | 83.5 | 88.5 | +5.0 |
+| 另一账号 18 篇文章 | 81 | 89 | +8 |
+
+Data Lens 的主要增量不是“多列几个角度”，而是更强的因果校准、竞争解释，以及把关键判断转成可失败的现实试验。裸 Codex 仍在跨期张力、内部矛盾、读者反馈和个别确定性计数上给出了 Skill 报告没有保留的好发现。两份报告还共同漏掉过原文中的重要反证，因此这两次胜出只能说明当前文章语料上出现了可重复的正向信号，不能证明对所有资料都更强。
+
+分数对应评测时的 0.8.1 预发布快照。盲评后，最终 0.8.1 又增加了“保留宿主原生好发现”、正文计数边界和同篇内部反证三条规则；为避免改完再重写历史，仓库保留原候选输出和原分数，不把修订后的潜在收益算进本轮成绩。
+
+失败案例也保留：历史市场案例中，旧版 Data Lens 曾以 88:90 落后，因为它把结构上的关键机制和最容易验证的动作混为一谈。这一失败促成了当前版本对 `E0/E1`、共同载体、区分预测和优先级切换条件的要求。
+
+完整候选输出、逐项评分、提示词、盲评协议和揭盲映射见 [`evals/`](evals/README.md)。
+
+## 安装到其他宿主
+
+仓库根目录就是完整 Skill：
 
 ```text
 Codex:               ~/.codex/skills/data-lens
@@ -25,54 +115,68 @@ Claude Code:         ~/.claude/skills/data-lens
 WorkBuddy/CodeBuddy: ~/.codebuddy/skills/data-lens
 ```
 
-The repository root is the installable Skill folder. WorkBuddy can also import the local folder through its Skill interface.
+也可以让支持本地 Skill 导入的宿主直接导入仓库目录。更新时在该目录执行 `git pull --ff-only`。不同宿主的工具能力不同，但核心分析协议、方法说明和评测材料相同。
 
-## Use
+## 工作方式
 
-Ask the agent to use `data-lens` and provide the source location plus the decision question. The agent inventories inputs, selects a route and sampling strategy, runs deterministic helpers, validates evidence, and produces a report with a run manifest.
+```text
+原始问题与资料
+→ 清点来源、重复、版本与可读性
+→ 确认分析对象、范围、单位和证据通道
+→ 自动发现或核对高价值问题
+→ 选择少量适用方法并完成确定性解析
+→ 建立问题地图，生成普通解释和结构不同的竞争解释
+→ 检查反例、替代解释、稳健性和区分证据
+→ 形成关键判断、行动与可验证预测
+→ 输出读者报告；复核材料单独保存
+```
 
-Useful local commands:
+认知引擎只用于扩展宿主模型的假设空间，不是固定世界观。当前实验性的矛盾分析会检查共享约束、反馈回路、异质反应和阶段性主导关系，也可以明确返回“现有证据不支持结构性矛盾”。普通读者报告使用现代、具体的决策语言，不要求理论引文或内部术语。
+
+## 可分析的资料
+
+- 文章、评论、访谈、案例和研究资料；
+- 销售、成本、运营等普通或重复导出的表格；
+- 图片、PDF 页面、音频、视频和混合证据；
+- 时间变化、分组差异、异常、跨来源关系和大语料候选召回；
+- ChatLab/微信会话 JSON 导出；
+- 适合用 R 处理的统计、时间、空间或因果方法。
+
+## 命令行能力是辅助，不是使用门槛
+
+普通用户直接对宿主智能体说话即可。下面的命令主要用于开发、复核或单独调用确定性助手：
 
 ```bash
 python scripts/data_lens.py capabilities
-python scripts/data_lens.py workbook-integrity <files.xlsx...> --output workbook-integrity.json
-python scripts/data_lens.py workbook-media <files.xlsx...> --manifest workbook-media.json --extract-sample --output-dir visual-sample
-python scripts/data_lens.py ocr <image> --output ocr-result.json
-python scripts/data_lens.py profile-pdf <files...> --output pdf-structure-profile.json
-python scripts/data_lens.py pdf <file.pdf> --output-dir pdf-evidence
-python scripts/data_lens.py video <video> --output-dir video-evidence
-python scripts/data_lens.py transcribe <media> --output-dir transcript-evidence --model-checkpoint <local.pt>
-python scripts/data_lens.py test
 python scripts/data_lens.py inventory <source> --output inventory.json
 python scripts/data_lens.py plan --goal "your original question" --inventory inventory.json --output plan.json
-python scripts/data_lens.py compile-angles --candidates angle-candidates.json --evidence-cards evidence-cards.json --output angle-adoption-ledger.json
-python scripts/data_lens.py synthesis-context --ledger angle-adoption-ledger.json --output synthesis-context.json
+python scripts/data_lens.py test
+python scripts/data_lens.py validate-methods
 ```
 
-## Optional capabilities
+运行 `python scripts/data_lens.py` 可查看完整命令。默认路径只依赖 Python 标准库；R、Poppler、Tesseract、ffprobe、Pillow、Whisper、sentence-transformers 或向量服务都是可选能力，不会被自动安装或静默调用。
 
-The default path uses the Python standard library. Data Lens detects but never auto-installs optional runtimes such as R, Poppler, Tesseract, ffprobe, Pillow, sentence-transformers, Chroma, or Qdrant clients. Capability reports distinguish installed dependencies from wired, fixture-validated, and production-ready workflows. Optional capabilities must degrade visibly when unavailable.
+## 证据与读者输出
 
-PDF preparation is bounded and traceable: it records the source hash, page number, rendered-page hash, optional OCR hash, and all non-retried failures. Rendering or OCR completion is not semantic review.
+模型请求成功不等于分析成立。正式发现需要能够回到来源，并说明覆盖、反例、竞争解释、稳健性和决策增量；如果资料只支持描述，就只交付描述，不用更长的文字包装成因果结论。
 
-PDF compilations are profiled before content sampling. The profiler separates physical files, pages, and provisional internal projects/chapters, screens empty or likely garbled text layers, and proposes a bounded non-sequential OCR pilot. Extremely tall image pages use a smaller default pilot cap and lower render-DPI recommendation.
+这些检查主要留在内部复核材料中。给普通读者的正文默认只保留：最重要的事实、关键关系、当前解释、重要例外、行动和会改变判断的信号。内部路径、哈希、路由 ID、合同、账本和审计记录不应污染阅读体验。
 
-Video preparation samples bounded timestamps across the duration and records source/timestamp/frame hashes. Optional Whisper transcription requires an existing local checkpoint and a bounded clip; it never downloads or silently substitutes a model. Frames and transcripts remain unreviewed evidence candidates until an agent or human verifies their meaning.
+## 项目边界
 
-## Evidence rule
+Data Lens 是由宿主智能体直接执行的文件系统 Skill，不包含浏览器工作台、API 服务、本地服务、项目数据库、Provider 控制台或自动外部模型调用。架构说明见 [`DESIGN.md`](DESIGN.md)。
 
-A model request may succeed while producing no usable analysis. A finding is adopted only after strict contract and evidence validation. If the core question has no adopted finding, the run cannot be marked complete.
-
-## Development
+## 开发与验证
 
 ```bash
-python scripts/test_data_lens.py
+python scripts/data_lens.py test
+python scripts/data_lens.py validate-methods
 python scripts/check_public_tree.py
 python scripts/check_agent_compatibility.py
 ```
 
-See `CONTRIBUTING.md` for method and fixture requirements.
+方法与 fixture 要求见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，版本变化见 [`CHANGELOG.md`](CHANGELOG.md)，真实增量评测见 [`evals/`](evals/README.md)。
 
 ## License
 
-Apache License 2.0. See `LICENSE`.
+Apache License 2.0. See [`LICENSE`](LICENSE).

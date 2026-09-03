@@ -9,7 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from _common import file_sha256, parse_date_text, safe_number, write_json
+from _common import file_sha256, guard_cli_output, parse_date_text, safe_number, write_json
 
 
 METHOD_VERSION = "1.0.0"
@@ -213,6 +213,7 @@ def main() -> None:
             command.add_argument("--metric", required=True)
             command.add_argument("--minimum-segment", type=int, default=3)
     args = parser.parse_args()
+    guard_cli_output(parser, args.output, [args.source])
     headers, rows = read_table(args.source)
     if args.command == "profile":
         result = profile(headers, rows)

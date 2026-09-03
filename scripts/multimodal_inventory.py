@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from _common import file_sha256, write_json
+from _common import ensure_output_not_source, file_sha256, write_json
 
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
@@ -151,6 +151,10 @@ def main() -> None:
     parser.add_argument("source", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    try:
+        ensure_output_not_source(args.output, [args.source])
+    except ValueError as exc:
+        parser.error(str(exc))
     payload = collect(args.source)
     write_json(args.output, payload)
     print(f"multimodal_inventory={args.output} items={len(payload['items'])}")

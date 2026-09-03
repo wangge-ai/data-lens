@@ -1,0 +1,49 @@
+{
+  "evaluation_id": "2026-09-real-world-paired",
+  "status": "public_pairs_complete_private_stress_case_partial",
+  "base_model_policy": "Use the host's configured default model for both candidates; do not override one side only.",
+  "cases": [
+    {
+      "case_id": "kazike-72-mhtml",
+      "source_description": "72 saved MHTML articles from one public WeChat account",
+      "selection": "all .mhtml files, ordered from 2026-05-06 through 2026-08-27",
+      "source_units": 72,
+      "source_redistributed": false,
+      "reason_not_redistributed": "The evaluation may publish transformative analysis outputs but does not republish full article bodies.",
+      "base_prompt": "prompts/kazike.txt",
+      "candidate_outputs": [
+        "kazike-72-mhtml/candidate-A.md",
+        "kazike-72-mhtml/candidate-B.md"
+      ],
+      "blind_evaluation": "kazike-72-mhtml/evaluation.md",
+      "reveal": "kazike-72-mhtml/reveal.json"
+    },
+    {
+      "case_id": "xiaobei-18-articles",
+      "source_description": "18 canonical articles from one public WeChat account; duplicate HTML/Markdown/MHTML containers represent the same articles",
+      "selection": "all 18 canonical dated articles from 2026-06-18 through 2026-08-25",
+      "source_units": 18,
+      "source_redistributed": false,
+      "reason_not_redistributed": "The evaluation may publish transformative analysis outputs but does not republish full article bodies.",
+      "base_prompt": "prompts/xiaobei.txt",
+      "candidate_outputs": [
+        "xiaobei-18-articles/candidate-A.md",
+        "xiaobei-18-articles/candidate-B.md"
+      ],
+      "blind_evaluation": "xiaobei-18-articles/evaluation.md",
+      "reveal": "xiaobei-18-articles/reveal.json"
+    },
+    {
+      "case_id": "market-mixed-509",
+      "source_description": "509 mixed private business files including research sheets, copy drafts, visual assets, product evidence, interviews, and collaboration records",
+      "selection": "all relevant files under the frozen source directory",
+      "source_units": 509,
+      "source_redistributed": false,
+      "reason_not_redistributed": "Private business material and results remain local.",
+      "base_prompt": "prompts/market.txt",
+      "candidate_outputs": [],
+      "blind_evaluation": null,
+      "local_status": "raw_host_baseline_complete; no same-condition Data Lens 0.8.1 pair, so no public score is reported"
+    }
+  ]
+}

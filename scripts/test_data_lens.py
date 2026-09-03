@@ -9,7 +9,7 @@ import builtins
 from pathlib import Path
 from unittest.mock import patch
 
-from _common import file_sha256, load_json, write_csv, write_json
+from _common import file_sha256, load_json, parse_date_text, write_csv, write_json
 from apply_visual_reviews import apply as apply_visual_reviews
 from compute_verified_stats import compute, read_metrics
 from build_source_graph import build_graph
@@ -20,9 +20,13 @@ from parse_tabular_exports import legacy_xls_cache_path, read_workbook
 from plan_analysis import build_plan
 from profile_text_corpus import build_profile as build_text_profile
 from profile_pdf_corpus import _text_state as pdf_text_state, bounded_page_plan, profile_pdf
+from profile_nested_projects import profile as profile_nested_projects
 from prepare_operational_run import prepare as prepare_operational_run
 from analyze_operational_facts import analyze as analyze_operational_facts
-from validate_operational_outputs import validate as validate_operational_outputs
+from validate_operational_outputs import validate as validate_operational_outputs, validate_ooxml_structure
+from finalize_operational_workbook import hide_validation_sheet
+from header_mapping import build_header_mapping
+from validate_run_manifest import validate_manifest
 from plan_batches import build_run_state
 from prepare_mixed_run import prepare
 from render_report import build_manifest, render_html, render_markdown
@@ -47,6 +51,8 @@ from assemble_deep_analysis import assemble
 from compile_source_dispositions import compile_dispositions
 from compile_family_refinements import compile_refinements
 from compile_entity_decisions import compile_entities
+from compile_corpus_scope import compile_scope
+from compile_deep_findings import compile_findings
 from plan_multimodal_fallbacks import plan_fallbacks
 from scan_sensitive_content import scan as scan_sensitive
 from prepare_semantic_review_packets import build_packets
@@ -193,6 +199,63 @@ def make_mixed_v22_analysis(source: Path) -> dict:
 
 
 class CorpusLensRegressionTests(unittest.TestCase):
+    def test_date_parser_validates_calendar_dates(self) -> None:
+        self.assertEqual(parse_date_text("2024-02-29"), "2024-02-29")
+        self.assertEqual(parse_date_text("2025/04/30 12:00:00"), "2025-04-30")
+        self.assertEqual(parse_date_text("20251231"), "2025-12-31")
+        self.assertIsNone(parse_date_text("2025-02-29"))
+        self.assertIsNone(parse_date_text("2025-04-31"))
+        self.assertIsNone(parse_date_text("2025-99-99"))
+
+    def test_header_mapping_is_versioned_and_fails_closed(self) -> None:
+        fixture = load_json(SKILL_DIR / "fixtures" / "operational-workbook" / "profit-headers.json")
+        aliases = {"date": ("日期",), "store": ("店铺",), "front_profit": ("前台利润",)}
+        valid = build_header_mapping(fixture["valid"], aliases, adapter_version="profit-detail/0.3")
+        self.assertEqual(valid["adapter_version"], "profit-detail/0.3")
+        self.assertEqual(valid["mapping"], {"date": 0, "store": 1, "front_profit": 22})
+        with self.assertRaisesRegex(ValueError, "required header missing"):
+            build_header_mapping(fixture["missing_profit"], aliases, adapter_version="profit-detail/0.3")
+        with self.assertRaisesRegex(ValueError, "ambiguous header"):
+            build_header_mapping(fixture["ambiguous_profit"], aliases, adapter_version="profit-detail/0.3")
+
+    def test_run_manifest_recomputes_all_file_bindings_and_status_axes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            artifact = root / "artifact.xlsx"
+            artifact.write_bytes(b"synthetic workbook artifact")
+            entry = {"path": artifact.name, "sha256": file_sha256(artifact)}
+            manifest = {
+                "analysis_status": "human_confirmed",
+                "artifact_status": "current",
+                "release_status": "releasable",
+                "sources": [entry],
+                "deterministic_artifacts": [entry],
+                "ledgers": [entry],
+                "deliverables": [{**entry, "artifact_status": "current", "release_status": "releasable"}],
+                "implementations": [entry],
+                "historical_artifacts": [{**entry, "artifact_status": "compatibility_failed", "release_status": "blocked"}],
+                "methods": [{"id": "synthetic.method", "version": "1.0.0"}],
+            }
+            manifest_path = root / "run_manifest.json"
+            write_json(manifest_path, manifest)
+            self.assertTrue(validate_manifest(manifest_path)["valid"])
+            artifact.write_bytes(b"mutated")
+            result = validate_manifest(manifest_path)
+        self.assertFalse(result["valid"])
+        self.assertTrue(any("bound_file_hash_mismatch" in error for error in result["errors"]))
+
+    def test_month_only_filename_is_not_misread_as_a_collection_day(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            month_only = root / "2025.11月份-前台利润-定.xlsx"
+            full_date = root / "2025.11.30-前台利润.xlsx"
+            month_only.write_bytes(b"month")
+            full_date.write_bytes(b"day")
+            inventory = collect([root], 64)
+        by_name = {item["name"]: item for item in inventory["files"]}
+        self.assertIsNone(by_name[month_only.name]["collection_date_hint"])
+        self.assertEqual(by_name[full_date.name]["collection_date_hint"], "2025-11-30")
+
     def test_repeated_operational_tables_route_and_inventory_hints(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -253,7 +316,7 @@ class CorpusLensRegressionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             analysis_path = root / "operational_analysis.json"
-            write_json(analysis_path, {"platform_dimension": {"platforms": ["平台A", "平台B"]}})
+            write_json(analysis_path, {"platform_dimension": {"platforms": ["平台A", "平台B"]}, "metrics": {"paid_amount": 100}})
             html_path = root / "report.html"
             html_path.write_text('<meta name="viewport" content="width=device-width"><style>.table-wrap{overflow-x:auto}</style><p>平台A 平台B</p>', encoding="utf-8")
             qa_path = root / "viewport_qa.json"
@@ -268,12 +331,136 @@ class CorpusLensRegressionTests(unittest.TestCase):
             table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
             sheet.add_table(table)
             check = workbook.create_sheet("_corpus_lens_validation")
-            check.append(["metric", "workbook_value", "analysis_value", "difference", "status"])
-            check.append(["paid_amount", 100, 100, 0, "PASS"])
+            check.append(["metric", "workbook_locator", "analysis_path", "workbook_value", "analysis_value", "difference", "status"])
+            check.append(["paid_amount", "平台日表!C2", "/metrics/paid_amount", 100, 100, 0, "PASS"])
+            check.append([])
+            check.append(["final artifact footer"])
             check.sheet_state = "hidden"
             workbook.save(workbook_path)
             result = validate_operational_outputs(workbook_path, analysis_path, html_path, qa_path)
         self.assertTrue(result["valid"], result["errors"])
+
+    def test_operational_validator_recomputes_instead_of_trusting_prewritten_pass(self) -> None:
+        try:
+            from openpyxl import Workbook
+            from openpyxl.worksheet.table import Table
+        except ImportError:
+            self.skipTest("openpyxl unavailable")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            analysis_path = root / "analysis.json"
+            write_json(analysis_path, {"metrics": {"paid_amount": 99}})
+            workbook_path = root / "workbook.xlsx"
+            workbook = Workbook()
+            sheet = workbook.active
+            sheet.title = "平台日表"
+            sheet.append(["日期", "平台", "支付额"])
+            sheet.append(["2026-07-01", "平台A", 100])
+            sheet.add_table(Table(displayName="PlatformDaily", ref="A1:C2"))
+            check = workbook.create_sheet("_corpus_lens_validation")
+            check.append(["metric", "workbook_locator", "analysis_path", "workbook_value", "analysis_value", "difference", "status"])
+            check.append(["paid_amount", "平台日表!C2", "/metrics/paid_amount", 100, 100, 0, "PASS"])
+            check.sheet_state = "hidden"
+            workbook.save(workbook_path)
+            result = validate_operational_outputs(workbook_path, analysis_path, None, None)
+        self.assertFalse(result["valid"])
+        self.assertIn("workbook_analysis_mismatch:paid_amount", result["errors"])
+
+    def test_ooxml_table_structure_rejects_blank_header_fixture(self) -> None:
+        try:
+            from openpyxl import Workbook
+            from openpyxl.worksheet.table import Table
+        except ImportError:
+            self.skipTest("openpyxl unavailable")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            workbook_path = root / "malformed.xlsx"
+            workbook = Workbook()
+            sheet = workbook.active
+            sheet.title = "合成数据"
+            sheet.append(["ID", "状态", "说明"])
+            sheet.append(["1", "采用", "脱敏样本"])
+            sheet.add_table(Table(displayName="SyntheticLedger", ref="A1:C2"))
+            workbook.save(workbook_path)
+            fixture = SKILL_DIR / "fixtures" / "operational-workbook" / "malformed-table"
+            rewritten = root / "rewritten.xlsx"
+            with zipfile.ZipFile(workbook_path, "r") as source, zipfile.ZipFile(rewritten, "w") as target:
+                for item in source.infolist():
+                    payload = source.read(item.filename)
+                    if item.filename == "xl/worksheets/sheet1.xml":
+                        payload = (fixture / "sheet1.xml").read_bytes()
+                    elif item.filename == "xl/tables/table1.xml":
+                        payload = (fixture / "table1.xml").read_bytes()
+                    target.writestr(item, payload)
+            rewritten.replace(workbook_path)
+            errors = validate_ooxml_structure(workbook_path)
+        self.assertTrue(any("table_header_empty" in error for error in errors), errors)
+        self.assertTrue(any("table_header_mismatch" in error for error in errors), errors)
+
+    def test_ooxml_table_structure_accepts_valid_synthetic_workbook(self) -> None:
+        try:
+            from openpyxl import Workbook
+            from openpyxl.worksheet.table import Table
+        except ImportError:
+            self.skipTest("openpyxl unavailable")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workbook_path = Path(temp_dir) / "valid.xlsx"
+            workbook = Workbook()
+            sheet = workbook.active
+            sheet.title = "合成数据"
+            sheet.append(["ID", "状态", "说明"])
+            sheet.append(["1", "采用", "脱敏样本"])
+            sheet.add_table(Table(displayName="SyntheticLedger", ref="A1:C2"))
+            workbook.save(workbook_path)
+            errors = validate_ooxml_structure(workbook_path)
+        self.assertEqual(errors, [])
+
+    def test_finalize_workbook_hides_validation_sheet_without_mutating_source(self) -> None:
+        try:
+            from openpyxl import Workbook, load_workbook
+        except ImportError:
+            self.skipTest("openpyxl unavailable")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "authored.xlsx"
+            output = root / "final.xlsx"
+            workbook = Workbook()
+            workbook.active.title = "业务结果"
+            workbook.active.append(["指标", "值"])
+            workbook.active.append(["利润", 100])
+            validation = workbook.create_sheet("_corpus_lens_validation")
+            validation.append(["metric", "workbook_locator", "analysis_path", "workbook_value", "analysis_value", "difference", "status"])
+            validation.append(["profit", "业务结果!B2", "/profit", 100, 100, 0, "PASS"])
+            workbook.save(source)
+            source_hash = file_sha256(source)
+
+            hide_validation_sheet(source, output)
+
+            self.assertEqual(file_sha256(source), source_hash)
+            finalized = load_workbook(output, read_only=True)
+            self.assertEqual(finalized["_corpus_lens_validation"].sheet_state, "hidden")
+            finalized.close()
+            self.assertEqual(validate_ooxml_structure(output), [])
+
+    def test_finalize_workbook_failure_preserves_existing_output(self) -> None:
+        try:
+            from openpyxl import Workbook
+        except ImportError:
+            self.skipTest("openpyxl unavailable")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "authored.xlsx"
+            output = root / "final.xlsx"
+            workbook = Workbook()
+            workbook.active.title = "业务结果"
+            workbook.save(source)
+            output.write_bytes(b"prior artifact")
+            prior_hash = file_sha256(output)
+
+            with self.assertRaisesRegex(ValueError, "exactly one validation sheet"):
+                hide_validation_sheet(source, output)
+
+            self.assertEqual(file_sha256(output), prior_hash)
 
     def test_purpose_recognition_uses_goal_and_evidence_roles(self) -> None:
         inventory = {
@@ -295,7 +482,7 @@ class CorpusLensRegressionTests(unittest.TestCase):
         self.assertEqual(plan["primary_route"], "method_corpus")
         self.assertEqual(plan["comparison_unit"], "atomic_method_claim")
 
-    def test_auto_angle_discovery_routes_text_corpus_without_user_dimensions(self) -> None:
+    def test_auto_angle_discovery_stops_mixed_roles_at_scope_gate(self) -> None:
         inventory = {
             "summary": {
                 "canonical_items": 89,
@@ -310,11 +497,10 @@ class CorpusLensRegressionTests(unittest.TestCase):
             "重点测试 Skill 的自主选路能力。"
         )
         plan = build_plan(goal, inventory)
-        self.assertNotEqual(plan["primary_route"], "method_corpus")
-        self.assertEqual(plan["primary_route"], "qualitative_corpus")
-        self.assertEqual(plan["comparison_unit"], "article")
+        self.assertEqual(plan["primary_route"], "inventory_and_profile")
+        self.assertEqual(plan["comparison_unit"], "source_container_then_candidate_family")
         self.assertEqual(plan["recommended_sampling_strategy"], "full_census")
-        self.assertIn("angle_discovery", plan["supporting_modules"])
+        self.assertIn("corpus_scope_gate", plan["supporting_modules"])
         self.assertTrue(plan["angle_discovery"]["requested"])
         self.assertEqual(plan["angle_discovery"]["adopted_angle_limit"], 4)
         self.assertFalse(plan["review_required"])
@@ -359,7 +545,7 @@ class CorpusLensRegressionTests(unittest.TestCase):
         self.assertEqual(plan["recommended_sampling_strategy"], "pdf_structure_then_internal_unit_stratified")
         self.assertIn("pdf_structure_profile", plan["supporting_modules"])
 
-    def test_free_rein_mixed_corpus_routes_to_angle_discovery(self) -> None:
+    def test_free_rein_mixed_corpus_requires_family_selection_before_analysis(self) -> None:
         inventory = {
             "summary": {"by_extension": {".xlsx": 4, ".txt": 1}},
             "files": [
@@ -368,9 +554,10 @@ class CorpusLensRegressionTests(unittest.TestCase):
             ],
         }
         plan = build_plan("除了子文件夹不分析，剩下的你来整理分析，给你自由发挥", inventory)
-        self.assertEqual(plan["primary_route"], "mixed_corpus")
+        self.assertEqual(plan["primary_route"], "inventory_and_profile")
         self.assertTrue(plan["angle_discovery"]["requested"])
-        self.assertIn("angle_discovery", plan["supporting_modules"])
+        self.assertIn("corpus_scope_gate", plan["supporting_modules"])
+        self.assertTrue(plan["corpus_shape"]["scope_gate_required"])
 
     def test_pdf_structure_sampling_is_bounded_and_not_front_loaded(self) -> None:
         selected = bounded_page_plan(315, maximum=12, priority_pages=[4, 120])
@@ -482,7 +669,7 @@ class CorpusLensRegressionTests(unittest.TestCase):
         plan = build_plan("分析同一作者的方法类文章，重点看选题、结构和文风", inventory)
         self.assertEqual(plan["primary_route"], "same_author_content")
 
-    def test_real_154_item_mixed_fixture_routes_to_mixed_corpus(self) -> None:
+    def test_real_154_item_mixed_fixture_requires_verified_scope_gate(self) -> None:
         fixture = load_json(SKILL_DIR / "fixtures" / "mixed_corpus_154.json")
         plan = build_plan(fixture["goal"], fixture["inventory"])
         for key, expected in fixture["expected"].items():
@@ -490,14 +677,15 @@ class CorpusLensRegressionTests(unittest.TestCase):
         self.assertEqual(plan["corpus_shape"]["canonical_items"], 154)
         self.assertFalse(plan["review_required"])
 
-    def test_mixed_goal_does_not_route_to_same_author(self) -> None:
+    def test_mixed_goal_stops_before_same_author_or_cross_family_synthesis(self) -> None:
         inventory = {
             "summary": {"canonical_items": 20, "by_evidence_role": {"content_text": 8, "visual_layout": 8, "tabular_data": 4}, "by_container_type": {"text_document": 8, "image": 8, "table": 4}},
             "files": [],
         }
         plan = build_plan("分析不同家族的写作、图片、表格和方法关联", inventory)
-        self.assertEqual(plan["primary_route"], "mixed_corpus")
-        self.assertEqual(plan["recommended_sampling_strategy"], "family_stratified")
+        self.assertEqual(plan["primary_route"], "inventory_and_profile")
+        self.assertEqual(plan["recommended_sampling_strategy"], "full_census")
+        self.assertTrue(plan["corpus_shape"]["scope_gate_required"])
 
     def test_sampling_records_recent_topic_bias(self) -> None:
         inventory = {
@@ -541,6 +729,62 @@ class CorpusLensRegressionTests(unittest.TestCase):
         self.assertEqual(sample["selected_count"], 4)
         self.assertGreaterEqual(len(sample["family_coverage"]), 3)
         self.assertTrue(all(item["selected_count"] >= 1 for item in sample["family_coverage"]))
+
+    def test_family_stratified_sampling_covers_nested_project_components(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            package = root / "package"
+            (package / ".codebuddy-plugin").mkdir(parents=True)
+            (package / ".codebuddy-plugin" / "plugin.json").write_text(
+                json.dumps({"name": "synthetic", "skills": ["./skills/alpha", "./skills/beta"]}), encoding="utf-8"
+            )
+            for skill in ("alpha", "beta"):
+                skill_root = package / "skills" / skill
+                skill_root.mkdir(parents=True)
+                (skill_root / "SKILL.md").write_text(f"# {skill}\n", encoding="utf-8")
+            for index in range(12):
+                (package / "skills" / "alpha" / f"note-{index}.md").write_text("alpha", encoding="utf-8")
+            (package / "skills" / "beta" / "guide.md").write_text("beta", encoding="utf-8")
+            (package / "docs").mkdir()
+            (package / "docs" / "usage.md").write_text("usage", encoding="utf-8")
+            (root / "loose").mkdir()
+            (root / "loose" / "demand.csv").write_text("需求,状态\n分析,待做\n", encoding="utf-8")
+            inventory = collect([root], 2)
+            sample = build_sample(inventory, "family_stratified", 8)
+        components = {item["component"]: item["selected_count"] for item in sample["project_component_coverage"]}
+        self.assertTrue(any(name.endswith("::skills/alpha") and count >= 1 for name, count in components.items()))
+        self.assertTrue(any(name.endswith("::skills/beta") and count >= 1 for name, count in components.items()))
+        self.assertEqual(sample["nested_project_coverage"][0]["coverage_status"], "covered")
+
+    def test_nested_project_profile_separates_implementation_layers(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            package = root / "package"
+            (package / ".codebuddy-plugin").mkdir(parents=True)
+            (package / ".codebuddy-plugin" / "plugin.json").write_text(
+                json.dumps({"name": "synthetic", "version": "1.0.0", "skills": ["./skills/alpha", "./skills/beta"]}), encoding="utf-8"
+            )
+            alpha = package / "skills" / "alpha"
+            (alpha / "scripts").mkdir(parents=True)
+            (alpha / "fixtures").mkdir()
+            (alpha / "SKILL.md").write_text("# alpha\n", encoding="utf-8")
+            (alpha / "scripts" / "run.py").write_text("print('ok')\n", encoding="utf-8")
+            (alpha / "fixtures" / "input.csv").write_text("a\n1\n", encoding="utf-8")
+            beta = package / "skills" / "beta"
+            (beta / "evals").mkdir(parents=True)
+            (beta / "SKILL.md").write_text("# beta\n", encoding="utf-8")
+            (beta / "evals" / "cases.json").write_text("{}\n", encoding="utf-8")
+            (package / "assets").mkdir()
+            (package / "assets" / "echarts.min.js").write_text("minified", encoding="utf-8")
+            result = profile_nested_projects(collect([root], 2))
+        self.assertEqual(result["project_count"], 1)
+        project = result["projects"][0]
+        self.assertEqual(project["declared_skill_summary"]["count"], 2)
+        self.assertEqual(project["declared_skill_summary"]["entrypoints_present"], 2)
+        self.assertEqual(project["declared_skill_summary"]["code_backed"], 1)
+        self.assertEqual(project["declared_skill_summary"]["sample_backed"], 1)
+        self.assertEqual(project["declared_skill_summary"]["test_backed"], 1)
+        self.assertEqual(project["role_counts"]["dependency_or_archive"], 1)
 
     def test_inventory_collapses_exact_copy_under_different_name(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1191,14 +1435,28 @@ class CorpusLensRegressionTests(unittest.TestCase):
             (inputs / "教程.md").write_text("# 教程\n方法步骤", encoding="utf-8")
             (inputs / "订单.csv").write_text("商品,订单\nA,1\n", encoding="utf-8")
             (inputs / "主图.png").write_bytes(b"image-fixture")
-            result = prepare([inputs], "分析不同家族的正文、表格、图片和方法关联", output, count=3, batch_size=2, hash_max_mb=2)
+            goal = "分析不同家族的正文、表格、图片和方法关联"
+            inventory = collect([inputs], 2)
+            source_ids = [str(item["source_container_id"]) for item in inventory["files"] if item.get("canonical", True)]
+            evidence = {"cards": [{"id": "E-SCOPE", "claim": "三个来源属于同一个跨格式分析任务。", "source": "synthetic-inventory.json", "locator": {"type": "json_pointer", "pointer": "/files"}, "verified": True, "family_id": "F-ALL", "lane": "source_metadata"}]}
+            candidates = {
+                "decision_question": goal,
+                "request": {"attempted": True, "succeeded": True, "provider": "fixture", "request_count": 1},
+                "shared_scope": {"shared_object_status": "confirmed", "shared_object": "同一跨格式任务", "shared_problem_status": "confirmed", "shared_problem": "验证正文、表格和图片的关系", "question_spans_families": True, "evidence_refs": ["E-SCOPE"]},
+                "families": [{"family_id": "F-ALL", "label": "跨格式任务", "shared_object": "任务资料", "analysis_unit": "family_specific", "recommended_route": "mixed_corpus", "source_container_ids": source_ids, "candidate_questions": [goal], "readiness": "ready", "evidence_refs": ["E-SCOPE"]}],
+                "selection": {"scope_type": "whole_corpus", "scope_id": "whole_corpus", "basis": "explicit_shared_scope", "authorized_by_user": True},
+            }
+            scope_gate = compile_scope(candidates, evidence, inventory)
+            result = prepare([inputs], goal, output, count=3, batch_size=2, hash_max_mb=2, scope_gate=scope_gate)
             validation = load_json(output / "mixed_workspace_validation.json")
+            nested_projects_exists = (output / "nested_projects.json").exists()
             evidence_ledger_exists = (output / "evidence_units.jsonl").exists()
             with self.assertRaises(FileExistsError):
-                prepare([inputs], "分析不同家族的正文、表格、图片和方法关联", output, count=3, batch_size=2, hash_max_mb=2)
+                prepare([inputs], goal, output, count=3, batch_size=2, hash_max_mb=2, scope_gate=scope_gate)
         self.assertEqual(result["route"], "mixed_corpus")
         self.assertTrue(result["workspace_valid_for_progress"])
         self.assertTrue(validation["valid"], validation["errors"])
+        self.assertTrue(nested_projects_exists)
         self.assertTrue(evidence_ledger_exists)
 
     def test_mixed_workspace_validates_references_and_completed_coverage(self) -> None:
@@ -1507,6 +1765,99 @@ class CorpusLensRegressionTests(unittest.TestCase):
             gate_input.write_text('{"changed": true}', encoding="utf-8")
             result = validate_analysis(analysis)
         self.assertIn("run_gate_input_hash_mismatch:sample", result["errors"])
+
+    def test_v24_deep_report_is_bound_to_anchor_finding_ledger(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "source.md"
+            source.write_text("第一行证据", encoding="utf-8")
+            gate_path = root / "run_gate_validation.json"
+            write_json(gate_path, {
+                "valid": True,
+                "report_eligible": True,
+                "report_mode": "preliminary",
+                "report_depth": "deep",
+                "route": "mixed_corpus",
+                "inputs": [],
+            })
+            analysis = make_mixed_v22_analysis(source)
+            question = "当前资料中哪条模式足以改变下一步验证动作？"
+            analysis.update({
+                "contract_version": "2.4",
+                "completion_status": "preliminary",
+                "run_gate": {"validation_path": str(gate_path), "sha256": file_sha256(gate_path)},
+            })
+            analysis["analysis_intent"]["decision_question"] = question
+            analysis["analysis_units"].update({"source_container_count": 10, "unselected_count": 0, "unreadable_count": 0, "not_applicable_count": 0})
+            for item in analysis["evidence"]:
+                item["locator"] = {"type": "text_span", "artifact_path": str(source), "start_line": 1, "end_line": 1, "quote": "第一行证据"}
+                item["trace"] = {"origin_path": str(source), "origin_sha256": file_sha256(source), "artifact_sha256": file_sha256(source), "directness": "direct"}
+            for item in analysis["recommendations"]:
+                item["priority"] = "now"
+            analysis["findings"][0]["id"] = "F-ANCHOR"
+            for recommendation in analysis["recommendations"]:
+                recommendation["finding_ids"] = ["F-ANCHOR" if value == "F01" else value for value in recommendation["finding_ids"]]
+            for checklist in analysis["analysis_checklist"]:
+                checklist["finding_ids"] = ["F-ANCHOR" if value == "F01" else value for value in checklist["finding_ids"]]
+            for experiment in analysis["experiments"]:
+                experiment["linked_finding_ids"] = ["F-ANCHOR" if value == "F01" else value for value in experiment["linked_finding_ids"]]
+            scope_gate = {
+                "contract_version": "data-lens-corpus-scope-gate/1.0",
+                "decision_question": question,
+                "next_action": "analysis_ready",
+                "deep_analysis_allowed": True,
+                "selected_family_id": "FAM-1",
+                "selection": {"scope_type": "family", "scope_id": "FAM-1", "authorized_by_user": True, "valid": True},
+            }
+            evidence = {"cards": [{
+                "id": "E-DEEP", "claim": "第一行证据支持当前模式候选。", "source": str(source),
+                "source_sha256": file_sha256(source),
+                "locator": {"type": "line_range", "start": 1, "end": 1}, "verified": True,
+                "unit_id": "UNIT-1", "independence_group": "UNIT-1", "family_id": "FAM-1",
+                "lane": "content_text", "directness": "direct",
+            }]}
+            candidates = {
+                "decision_question": question,
+                "request": {"attempted": True, "succeeded": True, "provider": "fixture", "request_count": 1},
+                "candidates": [{
+                    "finding_id": "F-ANCHOR", "title": "锚点发现", "claim": "当前模式只在已审范围内成立。",
+                    "claim_level": "pattern", "analysis_unit": "unit", "decision_relevance": "改变下一步验证动作。",
+                    "baseline": "与未出现该模式的单元比较。",
+                    "coverage": {"strategy": "全量已审单元", "eligible_units": 1, "reviewed_units": 1, "independent_source_groups": ["UNIT-1"], "limitations": ["单案例边界"]},
+                    "supporting_evidence_refs": ["E-DEEP"],
+                    "counterexample_search": {"status": "completed_none_found", "description": "检查全部一个合格单元，未发现反例。", "evidence_refs": ["E-DEEP"]},
+                    "alternative_explanations": [{"explanation": "该模式可能是单案例偶然。", "status": "unresolved", "discriminating_test": "增加独立案例。", "evidence_refs": [], "discriminating_evidence_refs": []}],
+                    "robustness_checks": [{"check_id": "TRACE", "description": "复核来源定位。", "result": "定位可复核。", "status": "passed", "evidence_refs": ["E-DEEP"]}],
+                    "boundaries": ["不能外推其他案例。"], "decision_delta": "下一步先补独立案例。", "confidence": "low", "proposed_status": "adopted",
+                }],
+            }
+            ledger = compile_findings(candidates, evidence, scope_gate)
+            ledger_path = root / "finding_adoption_ledger.json"
+            write_json(ledger_path, ledger)
+            analysis["finding_adoption"] = {"ledger_path": str(ledger_path), "sha256": file_sha256(ledger_path), "anchor_finding_ids": ["F-ANCHOR"]}
+            valid = validate_analysis(analysis)
+            self.assertTrue(valid["valid"], valid["errors"])
+            method = root / "method.md"
+            artifact = root / "deterministic.json"
+            method.write_text("深度发现方法", encoding="utf-8")
+            artifact.write_text("{}", encoding="utf-8")
+            analysis_path = root / "deep_analysis.json"
+            validation_path = root / "deep_analysis_validation.json"
+            context_path = root / "run_context.json"
+            write_json(analysis_path, analysis)
+            write_json(validation_path, valid)
+            context = build_context("mixed_corpus", "deep", [method], [artifact])
+            write_json(context_path, context)
+            (root / "report.html").write_text(render_html(analysis, "body{}", context), encoding="utf-8")
+            (root / "report.md").write_text(render_markdown(analysis), encoding="utf-8")
+            manifest = build_manifest(analysis, analysis_path, validation_path, context_path, context, root)
+            write_json(root / "run_manifest.json", manifest)
+            output_validation = validate_outputs(root)
+            self.assertEqual(manifest["manifest_version"], "2.4")
+            self.assertTrue(output_validation["valid"], output_validation["errors"])
+            analysis["finding_adoption"]["anchor_finding_ids"] = []
+            invalid = validate_analysis(analysis)
+        self.assertIn("finding_adoption_anchor_ids_mismatch", invalid["errors"])
 
     def test_visual_review_application_synchronizes_summary(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

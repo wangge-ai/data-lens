@@ -2,7 +2,7 @@
 
 `deep_analysis.json` 是普通路线的权威分析产物。读者 HTML 完整保留决策分析，但隐藏机器控制字段；审计 Markdown 同时保留分析和控制字段。两者都不能删减发现、比较、动作、证据边界或其他重要结论。
 
-新运行使用合同 `2.3`，渲染器继续兼容旧版 `2.0`—`2.2`。
+新运行使用合同 `2.4`，渲染器继续兼容旧版 `2.0`—`2.3`。合同 2.4 把深度完成状态绑定到证据门控的发现账本，不再用条目数量代表分析深度。
 
 ## 深度等级
 
@@ -12,26 +12,27 @@
 
 文章资料加后台指标的 `account_content_performance` 默认使用 `deep`。
 
-合同 2.2 对 `standard` 进行机械深度检查：
+旧合同 2.2—2.3 对 `standard` 和 `deep` 保留机械数量检查，以兼容历史产物：
 
 - `same_author_content`：至少 5 条发现、2 组比较、3 个路线章节、3 条建议和 8 条有限证据；
 - `method_corpus`：至少 5 条发现、2 组比较、3 个路线章节、2 条建议和 8 条证据；
 - `mixed_corpus`：至少 5 条发现、2 组比较、4 个路线章节、4 条建议和 10 条证据；
 - `novel_route` 的 standard：至少 3 条发现、1 组比较、2 个路线章节、2 条建议和 5 条证据。
 
-真正的小型试验应使用 `brief`，不能为了通过 standard 而凑内容。
+合同 2.4 不要求凑满固定数量。真正的小型试验应使用 `brief`；深度报告至少需要一条通过覆盖、反例、竞争解释、稳健性和决策价值检查的锚点发现。
 
 ## 顶层必填字段
 
 ```json
 {
-  "contract_version": "2.3",
+  "contract_version": "2.4",
   "completion_status": "preliminary",
   "report_depth": "deep",
   "route": "account_content_performance",
   "title": "...",
   "subtitle": "...",
   "run_gate": {"validation_path": ".../run_gate_validation.json", "sha256": "..."},
+  "finding_adoption": {"ledger_path": ".../finding-adoption-ledger.json", "sha256": "...", "anchor_finding_ids": ["F-..."]},
   "presentation": {},
   "analysis_intent": {},
   "analysis_units": {},
@@ -135,6 +136,18 @@ PDF 是来源容器，其中 66 个项目可能是 66 个分析单位；30 张�
 
 所有复数字段必须是 JSON 数组，即使只有一个值也不能写字符串，否则渲染器可能按字符遍历。
 
+## 锚点发现与合同 2.4
+
+报告中的语义候选先按 [deep-finding-engine.md](deep-finding-engine.md) 形成 `finding-adoption-ledger.json`。账本把普通采用发现和 `anchor_eligible` 锚点发现分开：
+
+- 普通采用发现通过范围、合同、证据、反例与决策关联，可以作为有边界的描述；
+- 锚点发现还必须有真实覆盖、竞争解释和至少一项支持性稳健性检查；
+- `pattern`、`relationship` 和 `mechanism_hypothesis` 必须保存至少一个竞争解释；
+- V1 不采用因果层级候选；机制假设不得写成因果证明；
+- 角度采用不能替代发现采用，也不能把核心问题标成已回答。
+
+`finding_adoption` 保存账本路径、哈希和全部锚点 ID。验证器重新验证账本、核对决策问题、确保报告没有遗漏已采用发现，并检查锚点 ID 完全一致。`final` 还要求路线必答项没有 `evidence_missing`。
+
 ## 实验不变量
 
 重要建议应转成实验，而不是泛泛建议。每个 `experiments` 项包含：
@@ -163,7 +176,7 @@ PDF 是来源容器，其中 66 个项目可能是 66 个分析单位；30 张�
 
 图片 locator 必须指向真实本地图片并包含描述。可选 `region` 为 `[x, y, width, height]`，图片尺寸可读时必须位于图片内部。
 
-`scripts/validate_deep_analysis.py` 会机械检查来源文件、哈希、位置和引用值，并重新核对 `run_gate_validation.json` 记录的每个输入文件哈希。语义台账和旧报告不得作为新分析的主证据。`completion_status` 必须匹配经过哈希绑定的有效运行门；验证后输入发生变化时，旧门不能授权渲染。
+`scripts/validate_deep_analysis.py` 会机械检查来源文件、哈希、位置和引用值，并重新核对 `run_gate_validation.json` 记录的每个输入文件哈希。合同 2.4 还重新验证发现账本及其哈希。语义台账和旧报告不得作为新分析的主证据。`completion_status` 必须匹配经过哈希绑定的有效运行门；验证后输入或发现账本发生变化时，旧门不能授权渲染。
 
 ## 运行追踪
 

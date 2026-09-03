@@ -8,7 +8,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-from _common import file_sha256, write_json
+from _common import ensure_output_not_source, file_sha256, write_json
 
 
 METHOD_ID = "data_lens.pdf_structure_profile"
@@ -214,6 +214,10 @@ def main() -> None:
     args = parser.parse_args()
     if not 3 <= args.max_ocr_pages <= 30:
         raise ValueError("max-ocr-pages must be between 3 and 30")
+    try:
+        ensure_output_not_source(args.output, args.sources)
+    except ValueError as exc:
+        parser.error(str(exc))
     payload = build_profile(args.sources, max_ocr_pages=args.max_ocr_pages)
     write_json(args.output, payload)
     print(json.dumps({"output": str(args.output.resolve()), "sources": payload["source_count"], "pages": payload["physical_page_count"], "analysis_unit_status": payload["analysis_unit_status"]}, ensure_ascii=False))

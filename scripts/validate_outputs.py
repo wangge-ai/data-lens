@@ -80,7 +80,7 @@ def validate(output_dir: Path) -> dict[str, Any]:
     for item in manifest.get("outputs", []):
         verify_record(item, "output", errors)
 
-    if manifest.get("manifest_version") == "2.3":
+    if manifest.get("manifest_version") in {"2.3", "2.4"}:
         completion_status = manifest.get("completion_status")
         if completion_status not in {"preliminary", "final"}:
             errors.append(f"manifest_completion_status_invalid:{completion_status}")
@@ -88,7 +88,7 @@ def validate(output_dir: Path) -> dict[str, Any]:
             errors.append("html_missing_completion_status")
         if completion_status == "preliminary" and "阶段性分析" not in html_text:
             errors.append("html_preliminary_not_disclosed")
-        if completion_status == "final" and "完整分析" not in html_text:
+        if completion_status == "final" and "已完成本轮分析" not in html_text:
             errors.append("html_final_not_disclosed")
         if 'class="overview-visuals"' not in html_text:
             errors.append("html_missing_compact_overview")
@@ -98,7 +98,7 @@ def validate(output_dir: Path) -> dict[str, Any]:
     analysis_path = Path(analysis_record.get("path", ""))
     if analysis_path.is_file():
         analysis = load_json(analysis_path)
-        if manifest.get("manifest_version") == "2.3" and manifest.get("completion_status") != analysis.get("completion_status"):
+        if manifest.get("manifest_version") in {"2.3", "2.4"} and manifest.get("completion_status") != analysis.get("completion_status"):
             errors.append("manifest_completion_status_mismatch")
         def require_visible(value: Any, label: str) -> None:
             if value in (None, ""):

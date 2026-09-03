@@ -114,9 +114,38 @@ def build_video_evidence(
     if not ffmpeg_command or not ffprobe_command:
         raise RuntimeError("FFmpeg and ffprobe must both be available")
     source_hash_before = file_sha256(source)
-    duration_ms = probe_duration(source, runner=runner, executable=ffprobe_command, timeout=timeout)
-    selected = parse_timestamp_spec(timestamp_spec, duration_ms, max_frames) if timestamp_spec else evenly_spaced_timestamps(duration_ms, max_frames)
     output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        duration_ms = probe_duration(source, runner=runner, executable=ffprobe_command, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        failure = _failure(None, "duration_probe_timeout", exc)
+        result = {
+            "source_path": str(source.resolve()),
+            "source_sha256": source_hash_before,
+            "source_unchanged": source_hash_before == file_sha256(source),
+            "duration_ms": None,
+            "selected_timestamps_ms": [],
+            "selection_strategy": "not_started",
+            "max_frames": max_frames,
+            "completion_status": "failed",
+            "semantic_review_status": "not_reviewed",
+            "frames": [],
+            "failure_ledger": [failure],
+            "summary": {"selected": 0, "successful": 0, "failed": 0, "failure_count": 1},
+            "recovery": {"automatic_retry": False, "resume_supported": False, "next_attempt_requires": "new_empty_output_directory"},
+        }
+        payload = {
+            "contract_version": "data-lens-method-result/1.0",
+            "method_id": METHOD_ID,
+            "method_version": METHOD_VERSION,
+            "status": "failed",
+            "results": [result],
+            "diagnostics": [{"failure_count": 1}, {"timed_out_stage": "duration_probe"}],
+            "boundaries": ["The timed-out command was not retried automatically; use a new empty output directory for an explicit retry."],
+        }
+        write_json(output_dir / "video-evidence.json", payload)
+        return payload
+    selected = parse_timestamp_spec(timestamp_spec, duration_ms, max_frames) if timestamp_spec else evenly_spaced_timestamps(duration_ms, max_frames)
     frames: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
     for index, timestamp_ms in enumerate(selected, start=1):
@@ -127,26 +156,32 @@ def build_video_evidence(
             "extraction_status": "pending",
             "semantic_review_status": "not_reviewed",
         }
-        completed = _run(
-            runner,
-            [
-                ffmpeg_command,
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-ss",
-                f"{timestamp_ms / 1000:.3f}",
-                "-i",
-                str(source.resolve()),
-                "-frames:v",
-                "1",
-                "-vf",
-                f"scale='min({max_width},iw)':-2",
-                "-n",
-                str(frame_path.resolve()),
-            ],
-            timeout,
-        )
+        try:
+            completed = _run(
+                runner,
+                [
+                    ffmpeg_command,
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-ss",
+                    f"{timestamp_ms / 1000:.3f}",
+                    "-i",
+                    str(source.resolve()),
+                    "-frames:v",
+                    "1",
+                    "-vf",
+                    f"scale='min({max_width},iw)':-2",
+                    "-n",
+                    str(frame_path.resolve()),
+                ],
+                timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            record["extraction_status"] = "failed"
+            failures.append(_failure(timestamp_ms, "frame_extraction_timeout", exc))
+            frames.append(record)
+            continue
         if completed.returncode or not frame_path.is_file():
             message = (completed.stderr or completed.stdout).strip() or "ffmpeg did not create the expected frame"
             record["extraction_status"] = "failed"
@@ -180,6 +215,7 @@ def build_video_evidence(
         "frames": frames,
         "failure_ledger": failures,
         "summary": {"selected": len(selected), "successful": successful, "failed": len(selected) - successful, "failure_count": len(failures)},
+        "recovery": None if not failures else {"automatic_retry": False, "resume_supported": False, "next_attempt_requires": "new_empty_output_directory"},
     }
     payload = {
         "contract_version": "data-lens-method-result/1.0",

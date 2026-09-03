@@ -20,7 +20,7 @@ def initialize(workspace: Path, title: str, subtitle: str, report_mode: str, dep
     canonical = int((inventory.get("summary") or {}).get("canonical_items") or 0)
     selected = int(sample.get("selected_count") or 0)
     return {
-        "contract_version": "2.3", "completion_status": report_mode, "report_depth": depth,
+        "contract_version": "2.4", "completion_status": report_mode, "report_depth": depth,
         "route": plan.get("primary_route"), "title": title, "subtitle": subtitle,
         "run_gate": {"validation_path": str(gate_path.resolve()), "sha256": file_sha256(gate_path)},
         "analysis_units": {
@@ -40,7 +40,7 @@ def initialize(workspace: Path, title: str, subtitle: str, report_mode: str, dep
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Initialize a gate-bound Data Lens deep_analysis 2.3 artifact.")
+    parser = argparse.ArgumentParser(description="Initialize a gate-bound Data Lens deep_analysis 2.4 artifact.")
     parser.add_argument("workspace", type=Path)
     parser.add_argument("--title", required=True)
     parser.add_argument("--subtitle", required=True)
@@ -50,7 +50,7 @@ def main() -> None:
     args = parser.parse_args()
     result = initialize(args.workspace, args.title, args.subtitle, args.report_mode, args.depth)
     write_json(args.output, result)
-    print(json.dumps({"output": str(args.output.resolve()), "contract_version": "2.3"}, ensure_ascii=False))
+    print(json.dumps({"output": str(args.output.resolve()), "contract_version": "2.4"}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

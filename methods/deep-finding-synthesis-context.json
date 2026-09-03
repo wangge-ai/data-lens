@@ -1,0 +1,21 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.deep_finding_synthesis_context",
+  "version": "1.0.0",
+  "status": "experimental",
+  "name": "深度发现有界综合上下文",
+  "purpose": "Build a deterministic bounded synthesis packet that preserves the roles of supporting, counter, alternative, discriminating, and robustness evidence for adopted findings.",
+  "question_types": ["cross_document_synthesis", "deep_analysis_report"],
+  "accepted_units": ["adopted_finding", "anchor_finding", "verified_evidence_card"],
+  "input_shapes": ["data_lens_finding_adoption_ledger"],
+  "eligibility_checks": ["finding ledger validates", "at least one anchor finding fits the budget"],
+  "assumptions": ["only adopted findings and their verified evidence roles enter the synthesis context"],
+  "human_gates": ["preserve unresolved alternatives and evidence boundaries in final prose"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/build_finding_synthesis_context.py", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["bounded finding packet", "evidence-role map", "budget accounting", "omission ledger"],
+  "diagnostics": ["used and omitted findings, evidence-card counts, character budget, and omission reasons"],
+  "evidence_requirements": ["adopted finding", "anchor finding", "verified evidence roles", "finding/card/character budgets"],
+  "allowed_claims": ["which adopted findings and evidence cards were admitted to synthesis"],
+  "forbidden_claims": ["omitted findings are false", "synthesis may strengthen confidence or claim level"],
+  "validation": {"status": "regression_tested", "fixtures": ["fixtures/deep-findings"]}
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/angle-adoption-ledger.schema.json",
+  "title": "Data Lens Angle Adoption Ledger 1.0",
+  "type": "object",
+  "required": ["contract_version", "request", "evidence_index", "candidates", "summary", "completion_status"],
+  "properties": {
+    "contract_version": {"const": "data-lens-angle-adoption-ledger/1.0"},
+    "request": {"type": "object"},
+    "evidence_index": {"type": "object"},
+    "candidates": {"type": "array"},
+    "summary": {
+      "type": "object",
+      "required": ["candidate_count", "adopted_count", "analysis_angle_available", "core_question_answered", "decision_question"],
+      "properties": {
+        "candidate_count": {"type": "integer", "minimum": 0},
+        "adopted_count": {"type": "integer", "minimum": 0},
+        "analysis_angle_available": {"type": "boolean"},
+        "core_question_answered": {"const": false},
+        "decision_question": {"type": "string", "minLength": 1}
+      }
+    },
+    "completion_status": {"enum": ["preliminary", "core_question_unanswered"]}
+  }
+}

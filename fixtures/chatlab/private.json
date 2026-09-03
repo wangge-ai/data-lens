@@ -1,0 +1,16 @@
+{
+  "chatlab": {"version": "synthetic-real-shape"},
+  "meta": {"name": "合成协作私聊", "platform": "wechat", "type": "private"},
+  "members": [
+    {"platformId": "member-a", "accountName": "甲", "avatar": ""},
+    {"platformId": "member-c", "accountName": "丙", "avatar": ""}
+  ],
+  "messages": [
+    {"sender": "member-a", "accountName": "甲", "timestamp": 1767312000, "type": 0, "content": "先让智能体理解目标，再提出分析角度。", "platformMessageId": "p-001"},
+    {"sender": "member-c", "accountName": "丙", "timestamp": 1767312060, "type": 0, "content": "Skill 负责哈希、范围门、合同和失败账本。", "platformMessageId": "p-002"},
+    {"sender": "member-a", "accountName": "甲", "timestamp": 1769990400, "type": 0, "content": "模型判断完成后还要独立校验，不能把请求成功当成采用成功。", "platformMessageId": "p-003"},
+    {"sender": "member-c", "accountName": "丙", "timestamp": 1769990460, "type": 4, "content": "[文件] synthetic-contract.json", "platformMessageId": "p-004"},
+    {"sender": "member-a", "accountName": "甲", "timestamp": 1772409600, "type": 0, "content": "最终只在人工确认后登记版本。", "platformMessageId": "p-005"},
+    {"sender": "member-c", "accountName": "丙", "timestamp": 1772409660, "type": 0, "content": "如果只是简单计算，宿主可以直接做，不必启动完整流程。", "platformMessageId": "p-006"}
+  ]
+}

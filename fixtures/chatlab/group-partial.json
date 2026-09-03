@@ -1,0 +1,13 @@
+{
+  "chatlab": {"version": "synthetic-real-shape"},
+  "meta": {"name": "合成 AI 实践群", "platform": "wechat", "type": "group", "groupId": "synthetic-group@chatroom"},
+  "members": [
+    {"platformId": "member-a", "accountName": "甲", "avatar": ""},
+    {"platformId": "member-b", "accountName": "乙", "avatar": ""}
+  ],
+  "messages": [
+    {"sender": "synthetic-group@chatroom", "accountName": "合成 AI 实践群", "timestamp": 1767225600, "type": 80, "content": "合成群系统通知", "platformMessageId": "g-001"},
+    {"sender": "member-a", "accountName": "甲", "timestamp": 1767225660, "type": 0, "content": "Codex 安装后为什么没有响应？", "platformMessageId": "g-002"},
+    {"sender": "member-b", "accountName": "乙", "timestamp": 1767225720, "type": 25, "content": "先检查本地配置和日志。", "platformMessageId": "g-003"}
+  ]
+}

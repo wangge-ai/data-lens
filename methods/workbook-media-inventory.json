@@ -9,11 +9,13 @@
   "accepted_units": ["workbook_media_object", "worksheet_cell"],
   "input_shapes": ["xlsx_workbook", "wps_xlsx_workbook"],
   "eligibility_checks": ["source is an OOXML workbook", "archive members are readable", "extraction budget is positive"],
+  "assumptions": ["OOXML relationships and DISPIMG identifiers describe candidate media links without proving semantic meaning"],
   "human_gates": ["semantically review extracted images before using visual claims", "approve any expansion beyond the bounded sample"],
   "implementation": {"runtime": "python", "entrypoint": "scripts/workbook_media.py", "network_policy": "deny", "optional_dependencies": ["openpyxl"]},
   "outputs": ["media manifest", "DISPIMG cell locators", "source and media hashes", "bounded sample", "failure ledger"],
+  "diagnostics": ["unresolved relationships, unmapped image identifiers, extraction failures, and sample coverage"],
   "evidence_requirements": ["workbook hash", "archive member", "media hash", "cell locator when available"],
   "allowed_claims": ["media object exists", "WPS image id maps to an archive member", "sample covers declared workbook and sheet strata"],
   "forbidden_claims": ["inventory equals semantic review", "bounded sample represents all visual content", "image existence proves effectiveness"],
-  "validation": {"status": "synthetic_and_real_shape", "fixtures": ["fixtures/workbooks"]}
+  "validation": {"status": "regression_tested", "fixtures": ["fixtures/workbooks"]}
 }

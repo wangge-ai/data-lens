@@ -25,6 +25,8 @@
 
 解析新文件前先运行 `scripts/prepare_operational_run.py`。只有来源哈希、解析器版本、指标版本和完成状态全部一致时才能复用旧结果。旧版 `.xls` 通过 `scripts/parse_tabular_exports.py` 的持久转换缓存处理。
 
+完整性扫描与业务聚合的边界必须分开。`workbook-integrity` 达到单元格预算后输出的 `observed_dimension` 只是下界，禁止把该行号当成表尾；业务聚合应读取完整声明范围或使用经过验证的记录终止规则，并把实际非空行数写入运行清单。
+
 ## 时间口径
 
 分别声明适用的时间轴：
@@ -134,7 +136,7 @@
 
 Excel 使用表格对象或动态范围，冻结表头、启用筛选，并让平台维度出现在所有相关工作表和图表中。禁止把最后一行写死。交付前扫描公式错误，并把工作簿合计与 `operational_analysis.json` 对账。
 
-对账结果写入隐藏工作表 `_corpus_lens_validation`，至少包含 `metric`、`workbook_value`、`analysis_value`、`difference` 和 `status`，所有交付行都必须是 `PASS`。
+对账结果写入隐藏工作表 `_corpus_lens_validation`，包含 `metric`、`workbook_locator`、`analysis_path`、`workbook_value`、`analysis_value`、`difference` 和 `status`。验证器必须按定位重新读取工作簿值，并按 JSON Pointer 重新读取锁定分析值，不能信任预写的 `PASS`。所有交付行都必须通过；OOXML 表头、范围、关系和唯一性也必须通过结构校验。
 
 页面测试至少覆盖不大于 400 像素的手机宽度和不小于 1200 像素的桌面宽度，结果保存到 `viewport_qa.json`，然后运行 `scripts/validate_operational_outputs.py`。
 

@@ -4,16 +4,19 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
 import sqlite3
+import tempfile
 from pathlib import Path
 from typing import Any, Iterable
 
-from _common import file_sha256, read_text_fallback
+from _common import ensure_output_not_source, file_sha256, read_text_fallback
 
 
 TEXT_EXTENSIONS = {".txt", ".md", ".html", ".htm", ".csv", ".tsv", ".json", ".jsonl"}
 TOKEN_RE = re.compile(r"[a-z0-9_]+|[\u4e00-\u9fff]", re.I)
+INDEX_CONTRACT = "data-lens-vector-index/1.0"
 
 
 def _tokens(text: str) -> list[str]:
@@ -68,13 +71,28 @@ def _source_files(source: Path) -> tuple[Path, list[Path]]:
     return source, files
 
 
-def build_index(source: Path, database: Path, *, dimensions: int = 384, chunk_chars: int = 1200, overlap: int = 120, replace: bool = False) -> dict[str, Any]:
-    if database.exists() and not replace:
-        raise FileExistsError(f"index already exists; pass --replace to rebuild: {database}")
-    root, files = _source_files(source)
-    database.parent.mkdir(parents=True, exist_ok=True)
-    if database.exists():
-        database.unlink()
+def _validated_index(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    try:
+        uri = f"{path.resolve().as_uri()}?mode=ro"
+        connection = sqlite3.connect(uri, uri=True)
+        try:
+            tables = {
+                row[0]
+                for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            }
+            if not {"metadata", "chunks"}.issubset(tables):
+                return False
+            row = connection.execute("SELECT value FROM metadata WHERE key = 'contract_version'").fetchone()
+            return bool(row and json.loads(row[0]) == INDEX_CONTRACT)
+        finally:
+            connection.close()
+    except (OSError, sqlite3.Error, json.JSONDecodeError, TypeError):
+        return False
+
+
+def _populate_index(database: Path, root: Path, files: list[Path], *, dimensions: int, chunk_chars: int, overlap: int) -> dict[str, Any]:
     connection = sqlite3.connect(database)
     try:
         connection.executescript(
@@ -105,7 +123,7 @@ def build_index(source: Path, database: Path, *, dimensions: int = 384, chunk_ch
                 )
                 chunk_count += 1
         metadata = {
-            "contract_version": "data-lens-vector-index/1.0",
+            "contract_version": INDEX_CONTRACT,
             "backend": "local_sqlite_hashing",
             "dimensions": dimensions,
             "chunk_chars": chunk_chars,
@@ -120,6 +138,46 @@ def build_index(source: Path, database: Path, *, dimensions: int = 384, chunk_ch
         return metadata
     finally:
         connection.close()
+
+
+def build_index(source: Path, database: Path, *, dimensions: int = 384, chunk_chars: int = 1200, overlap: int = 120, replace: bool = False) -> dict[str, Any]:
+    root, files = _source_files(source)
+    ensure_output_not_source(database, files)
+    previous_hash: str | None = None
+    if database.exists():
+        if not replace:
+            raise FileExistsError(f"index already exists; pass --replace to rebuild: {database}")
+        if not _validated_index(database):
+            raise ValueError(f"--replace target is not a verified Data Lens vector index: {database}")
+        previous_hash = file_sha256(database)
+    database.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{database.name}.", suffix=".tmp", dir=database.parent
+    )
+    os.close(descriptor)
+    temporary = Path(temporary_name)
+    try:
+        metadata = _populate_index(
+            temporary,
+            root,
+            files,
+            dimensions=dimensions,
+            chunk_chars=chunk_chars,
+            overlap=overlap,
+        )
+        with temporary.open("r+b") as handle:
+            os.fsync(handle.fileno())
+        if previous_hash is None:
+            if database.exists():
+                raise FileExistsError(f"index appeared while building; refusing to overwrite: {database}")
+        elif not database.exists() or file_sha256(database) != previous_hash or not _validated_index(database):
+            raise RuntimeError(f"existing Data Lens vector index changed while rebuilding: {database}")
+        os.replace(temporary, database)
+        return metadata
+    finally:
+        temporary.unlink(missing_ok=True)
+        for suffix in ("-journal", "-wal", "-shm"):
+            Path(f"{temporary}{suffix}").unlink(missing_ok=True)
 
 
 def query_index(database: Path, text: str, *, limit: int = 10) -> dict[str, Any]:

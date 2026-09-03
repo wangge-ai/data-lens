@@ -3,10 +3,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import re
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from _common import SKILL_NAME, SKILL_VERSION, load_json, write_json
+from _common import SKILL_NAME, SKILL_VERSION, guard_cli_output, load_json, write_json
 
 
 DIMENSIONS: list[tuple[str, str, tuple[str, ...]]] = [
@@ -99,7 +100,94 @@ def has_explicit_method_route_intent(goal: str) -> bool:
     return any(re.search(pattern, goal, re.I) for pattern in METHOD_ROUTE_PATTERNS)
 
 
-def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
+def _inventory_for_scope(inventory: dict[str, Any], scope_gate: dict[str, Any] | None) -> dict[str, Any]:
+    if not scope_gate or scope_gate.get("next_action") != "analysis_ready" or scope_gate.get("deep_analysis_allowed") is not True:
+        return inventory
+    selected_ids = {str(value) for value in scope_gate.get("selected_source_ids", []) if str(value)}
+    if not selected_ids:
+        return inventory
+    files = [
+        item for item in inventory.get("files", [])
+        if str(item.get("source_container_id") or "") in selected_ids
+    ]
+    canonical = [item for item in files if item.get("canonical", True)]
+    extensions = Counter(str(item.get("extension") or Path(str(item.get("path") or "")).suffix).lower() for item in canonical)
+    dates = {str(item.get("collection_date")) for item in canonical if item.get("collection_date")}
+    repeated_families = {
+        str(item.get("repeated_export_family_key"))
+        for item in canonical
+        if item.get("repeated_export_family_key")
+    }
+    table_extensions = {".csv", ".tsv", ".xls", ".xlsx", ".xlsm"}
+    summary = {
+        **(inventory.get("summary") or {}),
+        "canonical_items": len(canonical),
+        "by_extension": dict(sorted(extensions.items())),
+        "date_partition_count": len(dates),
+        "repeated_table_family_count": len(repeated_families),
+        "table_files": sum(count for extension, count in extensions.items() if extension in table_extensions),
+    }
+    return {**inventory, "files": files, "summary": summary}
+
+
+def _route_from_scope_gate(scope_gate: dict[str, Any] | None) -> str | None:
+    """Use the verified selection to recover the route without rewriting the user goal."""
+    if not scope_gate or scope_gate.get("next_action") != "analysis_ready" or scope_gate.get("deep_analysis_allowed") is not True:
+        return None
+    selection = scope_gate.get("selection") or {}
+    if selection.get("scope_type") == "whole_corpus":
+        return "mixed_corpus"
+    selected_family_id = str(scope_gate.get("selected_family_id") or "")
+    if not selected_family_id:
+        return None
+    for family in scope_gate.get("families", []):
+        if (
+            str(family.get("family_id") or "") == selected_family_id
+            and family.get("analysis_ready") is True
+        ):
+            route = str(family.get("recommended_route") or "")
+            return route if route in {
+                "tabular_analysis",
+                "repeated_operational_tables",
+                "qualitative_corpus",
+                "same_author_content",
+                "account_content_performance",
+                "method_corpus",
+                "multimodal_evidence",
+                "mixed_corpus",
+                "novel_route",
+            } else None
+    return None
+
+
+def _analysis_unit_from_scope_gate(scope_gate: dict[str, Any] | None) -> str | None:
+    if not scope_gate or (scope_gate.get("selection") or {}).get("scope_type") != "family":
+        return None
+    selected_family_id = str(scope_gate.get("selected_family_id") or "")
+    for family in scope_gate.get("families", []):
+        if str(family.get("family_id") or "") == selected_family_id and family.get("analysis_ready") is True:
+            value = str(family.get("analysis_unit") or "").strip()
+            return value or None
+    return None
+
+
+def _scope_route_defaults(route: str) -> tuple[str, str, list[str]]:
+    defaults = {
+        "tabular_analysis": ("table_row_or_declared_business_unit", "full_census", ["table_profile", "grouped_descriptive"]),
+        "repeated_operational_tables": ("business_date_x_platform", "full_census", ["table_quality_gate", "operational_fact_layer"]),
+        "qualitative_corpus": ("document_or_declared_case", "balanced_topic", ["qualitative_framework"]),
+        "same_author_content": ("article", "balanced_topic", []),
+        "account_content_performance": ("article_with_confirmed_metrics", "performance_contrast", ["same_author_content"]),
+        "method_corpus": ("atomic_method_claim", "stratified", []),
+        "multimodal_evidence": ("media_segment_or_visual_region", "stratified", ["multimodal_inventory"]),
+        "mixed_corpus": ("family_specific", "family_stratified", []),
+        "novel_route": ("pilot_defined", "pilot", []),
+    }
+    return defaults[route]
+
+
+def build_plan(goal: str, inventory: dict[str, Any], scope_gate: dict[str, Any] | None = None) -> dict[str, Any]:
+    inventory = _inventory_for_scope(inventory, scope_gate)
     role_counts = canonical_role_counts(inventory)
     container_counts = canonical_container_counts(inventory)
     dimensions = recognize_dimensions(goal)
@@ -129,6 +217,17 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
         and len(ids.intersection({"visual_layout", "course_structure", "audience_voice", "performance", "family_relation"})) >= 1
         and role_diversity >= 2
     )
+    scope_gate_ready = bool(
+        scope_gate
+        and scope_gate.get("contract_version") == "data-lens-corpus-scope-gate/1.0"
+        and scope_gate.get("next_action") == "analysis_ready"
+        and scope_gate.get("deep_analysis_allowed") is True
+    )
+    selected_scope_route = _route_from_scope_gate(scope_gate)
+    selected_scope_unit = _analysis_unit_from_scope_gate(scope_gate)
+    mixed_scope_needs_gate = role_diversity >= 2 and (
+        explicit_mixed_goal or angle_discovery_requested or multi_dimension_mixed or not dimensions
+    )
     mixed_corpus = (explicit_mixed_goal and role_diversity >= 2) or multi_dimension_mixed or (angle_discovery_requested and has_text and has_tabular)
     operational_intent = "operational_performance" in ids
     explicit_operational_business = bool(re.search(r"经营|订单|支付|销售|推广|广告|库存|退款|履约|店铺|商品|平台", goal, re.I))
@@ -140,7 +239,28 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
     supporting: list[str] = []
     confidence = "high"
 
-    if "inventory_profile" in ids and not ids.intersection({"operational_performance", "generic_tabular", "performance", "method_extraction", "family_relation"}):
+    if mixed_scope_needs_gate and not scope_gate_ready:
+        route = "inventory_and_profile"
+        comparison_unit = "source_container_then_candidate_family"
+        sampling = "full_census"
+        confidence = "high"
+        supporting.extend(["data_profile", "corpus_scope_gate"])
+        missing.append("资料包含多个证据角色，但尚无通过校验的资料群选择；只能盘点、去重、分类并提出分群问题，不得执行全目录综合")
+    elif selected_scope_route:
+        route = selected_scope_route
+        comparison_unit, sampling, scope_supporting = _scope_route_defaults(route)
+        if selected_scope_unit:
+            comparison_unit = selected_scope_unit
+        supporting.extend(scope_supporting)
+        confidence = "high"
+        if route == "qualitative_corpus" and angle_discovery_requested:
+            supporting.append("angle_discovery")
+        if route == "mixed_corpus" and has_tabular:
+            supporting.append("tabular_screening")
+        if route in {"mixed_corpus", "multimodal_evidence"} and has_av:
+            supporting.append("multimodal_inventory")
+            missing.append("音视频在形成内容结论前仍需转录或抽帧")
+    elif "inventory_profile" in ids and not ids.intersection({"operational_performance", "generic_tabular", "performance", "method_extraction", "family_relation"}):
         route = "inventory_and_profile"
         comparison_unit = "source_container"
         sampling = "full_census"
@@ -330,7 +450,7 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
         (SKILL_VERSION + "|" + route + "|" + ",".join(sorted(set(supporting))) + "|" + ",".join(sorted(ids))).encode("utf-8")
     ).hexdigest()
     return {
-        "plan_version": "1.5",
+        "plan_version": "1.6",
         "skill_name": SKILL_NAME,
         "skill_version": SKILL_VERSION,
         "user_goal": goal,
@@ -357,6 +477,12 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
                 "overreach_risk",
             ],
         },
+        "host_context_review": {
+            "required": not bool(dimensions),
+            "reason": "本轮原话没有可确定路由的分析维度；宿主智能体必须结合可见对话上下文解析承接意图，但不得改写 decision_question。" if not dimensions else None,
+            "may_use_conversation_history": True,
+            "must_record_route_or_angle_override_reason": True,
+        },
         "corpus_shape": {
             "canonical_items": int((inventory.get("summary") or {}).get("canonical_items") or sum(role_counts.values())),
             "role_diversity": role_diversity,
@@ -368,6 +494,16 @@ def build_plan(goal: str, inventory: dict[str, Any]) -> dict[str, Any]:
             "repeated_table_family_count": repeated_table_family_count,
             "repeated_operational_shape": repeated_operational_shape,
             "explicit_method_route_intent": explicit_method_intent,
+            "scope_gate_required": mixed_scope_needs_gate,
+            "scope_gate_ready": scope_gate_ready,
+        },
+        "corpus_scope_gate": {
+            "provided": scope_gate is not None,
+            "contract_version": scope_gate.get("contract_version") if scope_gate else None,
+            "next_action": scope_gate.get("next_action") if scope_gate else "compile_scope_before_analysis" if mixed_scope_needs_gate else "not_required",
+            "deep_analysis_allowed": scope_gate.get("deep_analysis_allowed") if scope_gate else not mixed_scope_needs_gate,
+            "selected_family_id": scope_gate.get("selected_family_id") if scope_gate else None,
+            "selected_source_count": len(scope_gate.get("selected_source_ids", [])) if scope_gate else 0,
         },
         "available_evidence_roles": role_counts,
         "required_evidence_roles": list(dict.fromkeys(required_lanes)),
@@ -385,9 +521,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Recognize the user's analysis purpose and produce an auditable Data Lens route plan.")
     parser.add_argument("--goal", required=True)
     parser.add_argument("--inventory", type=Path, required=True)
+    parser.add_argument("--scope-gate", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    result = build_plan(args.goal, load_json(args.inventory))
+    guard_cli_output(parser, args.output, [args.inventory, *([args.scope_gate] if args.scope_gate else [])])
+    result = build_plan(args.goal, load_json(args.inventory), load_json(args.scope_gate) if args.scope_gate else None)
     write_json(args.output, result)
     print(f"plan={args.output} route={result['primary_route']} confidence={result['route_confidence']} dimensions={len(result['recognized_dimensions'])}")
 

@@ -1,0 +1,8 @@
+{
+  "contract_version": "data-lens-evidence-cards/1.0",
+  "cards": [
+    {"id": "E-W", "claim": "两个来源都位于同一个已识别的 WorkBuddy 项目中。", "source": "sanitized-inventory.json", "locator": {"type": "json_pointer", "pointer": "/projects/0"}, "verified": true, "family_id": "F-WORKBUDDY", "lane": "source_metadata"},
+    {"id": "E-B", "claim": "两个工作簿都声明为经营或市场分析资料。", "source": "sanitized-inventory.json", "locator": {"type": "json_pointer", "pointer": "/families/business"}, "verified": true, "family_id": "F-BUSINESS", "lane": "source_metadata"},
+    {"id": "E-T", "claim": "培训提纲是独立的教学资料。", "source": "sanitized-inventory.json", "locator": {"type": "json_pointer", "pointer": "/families/training"}, "verified": true, "family_id": "F-TRAINING", "lane": "source_metadata"}
+  ]
+}

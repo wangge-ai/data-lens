@@ -1,0 +1,5 @@
+{
+  "cards": [
+    {"id": "E-SCOPE", "claim": "四个来源属于同一批待分析文章。", "source": "sanitized-inventory.json", "locator": {"type": "json_pointer", "pointer": "/files"}, "verified": true, "family_id": "F-ARTICLES", "lane": "source_metadata"}
+  ]
+}

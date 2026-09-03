@@ -11,7 +11,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Callable
 
-from _common import file_sha256, write_json
+from _common import ensure_output_not_source, file_sha256, write_json
 from multimodal_inventory import image_size
 
 
@@ -210,8 +210,10 @@ def main() -> None:
     parser.add_argument("--psm", type=int, action="append", dest="psms")
     parser.add_argument("--timeout", type=int, default=30, help="Seconds per OCR candidate, from 1 to 120")
     args = parser.parse_args()
-    if args.output.resolve() == args.source.resolve():
-        parser.error("--output must not overwrite the source image")
+    try:
+        ensure_output_not_source(args.output, [args.source])
+    except ValueError as exc:
+        parser.error(str(exc))
     payload = run_ocr(args.source, languages=args.languages, psms=tuple(args.psms or DEFAULT_PSMS), timeout=args.timeout)
     write_json(args.output, payload)
     summary = payload["results"][0]

@@ -1,0 +1,46 @@
+{
+  "decision_question": "这批文章中有哪些值得用于下一轮内容实验的结构模式？",
+  "request": {"attempted": true, "succeeded": true, "provider": "sanitized-real-shape-fixture", "request_count": 1},
+  "candidates": [
+    {
+      "finding_id": "F-RESULT-FIRST",
+      "title": "结果前置是多数已审文章的共同结构，但不是必要条件",
+      "claim": "四篇已审文章中三篇先展示结果再解释步骤，一篇反例直接进入步骤，因此该结构是当前语料中的多数模式而非普遍规则。",
+      "claim_level": "pattern",
+      "analysis_unit": "article",
+      "decision_relevance": "可以把结果前置作为下一轮内容结构实验变量，而不是固定模板。",
+      "baseline": "与不先展示结果、直接进入步骤的已审文章比较。",
+      "coverage": {"strategy": "四篇去重文章全量审核", "eligible_units": 4, "reviewed_units": 4, "independent_source_groups": ["ARTICLE-A", "ARTICLE-C"], "limitations": ["没有文章级表现数据"]},
+      "supporting_evidence_refs": ["E-S1", "E-S2"],
+      "counterexample_search": {"status": "completed_with_counterexamples", "description": "检查全部已审文章是否存在不采用结果前置的单元。", "evidence_refs": ["E-C1"]},
+      "alternative_explanations": [
+        {"explanation": "结果前置可能只是教程题材的结构惯例，而非更有效的表达。", "status": "unresolved", "discriminating_test": "在相近题材和发布时间下比较两种开头的文章级继续阅读指标。", "evidence_refs": ["E-C1"], "discriminating_evidence_refs": []}
+      ],
+      "robustness_checks": [
+        {"check_id": "DEDUPE", "description": "去除同内容副本后重新检查模式。", "result": "支持模式的正文仍来自不同规范单元。", "status": "passed", "evidence_refs": ["E-R1"]}
+      ],
+      "boundaries": ["只能说明当前四篇文章的结构分布，不能证明结果前置提高阅读或转化。"],
+      "decision_delta": "把是否结果前置登记为单变量实验，不再把它直接写成最佳实践。",
+      "confidence": "medium",
+      "proposed_status": "adopted"
+    },
+    {
+      "finding_id": "F-UNREVIEWED",
+      "title": "未审核命中不能形成模式",
+      "claim": "检索候选表明所有文章都结果前置。",
+      "claim_level": "pattern",
+      "analysis_unit": "article",
+      "decision_relevance": "若成立将成为统一模板。",
+      "baseline": "全部文章。",
+      "coverage": {"strategy": "检索命中", "eligible_units": 5, "reviewed_units": 1, "independent_source_groups": ["ARTICLE-X"], "limitations": ["未语义审核"]},
+      "supporting_evidence_refs": ["E-U1"],
+      "counterexample_search": {"status": "not_completed", "description": "尚未检查反例。", "evidence_refs": []},
+      "alternative_explanations": [],
+      "robustness_checks": [],
+      "boundaries": ["检索命中不是全量证据。"],
+      "decision_delta": "暂不改变决策。",
+      "confidence": "low",
+      "proposed_status": "adopted"
+    }
+  ]
+}

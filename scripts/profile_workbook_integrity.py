@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from _common import file_sha256, write_json
+from _common import ensure_output_not_source, file_sha256, write_json
 
 
 FORMULA_ERRORS = {"#REF!", "#DIV/0!", "#VALUE!", "#NAME?", "#N/A", "#NUM!", "#NULL!"}
@@ -74,7 +74,17 @@ def _scan_workbook(path: Path, max_cells_per_sheet: int, rules: list[dict[str, A
     try:
         for formula_sheet in formula_book.worksheets:
             value_sheet = value_book[formula_sheet.title]
-            declared_dimension = formula_sheet.calculate_dimension()
+            try:
+                declared_dimension = formula_sheet.calculate_dimension()
+                declared_dimension_status = "declared"
+                declared_row, declared_column = _dimension_bounds(declared_dimension)
+            except ValueError:
+                # Some valid producers omit worksheet dimension metadata.  Do not
+                # force a full unbounded scan just to synthesize it; the bounded
+                # pass below remains the source of observed-range evidence.
+                declared_dimension = None
+                declared_dimension_status = "missing_unsized"
+                declared_row, declared_column = 0, 0
             if hasattr(formula_sheet, "reset_dimensions"):
                 formula_sheet.reset_dimensions()
             if hasattr(value_sheet, "reset_dimensions"):
@@ -144,17 +154,24 @@ def _scan_workbook(path: Path, max_cells_per_sheet: int, rules: list[dict[str, A
                 if truncated:
                     break
             actual_dimension = _actual_dimension(actual_max_row, actual_max_column)
-            declared_row, declared_column = _dimension_bounds(declared_dimension)
-            stale_dimension = actual_max_row > declared_row or actual_max_column > declared_column
+            stale_dimension = (
+                actual_max_row > declared_row or actual_max_column > declared_column
+                if declared_dimension_status == "declared"
+                else None
+            )
             sheets.append(
                 {
                     "name": formula_sheet.title,
                     "declared_dimension": declared_dimension,
+                    "declared_dimension_status": declared_dimension_status,
                     "observed_dimension": actual_dimension,
+                    "observed_dimension_status": "lower_bound_due_to_scan_limit" if truncated else "complete_scan",
+                    "safe_for_row_bound_inference": not truncated,
                     "stale_declared_dimension": stale_dimension,
                     "scanned_cells": scanned_cells,
                     "nonempty_cells": nonempty_cells,
                     "scan_truncated": truncated,
+                    "formula_error_scan_complete": not truncated,
                 }
             )
             truncated_any = truncated_any or truncated
@@ -169,6 +186,7 @@ def _scan_workbook(path: Path, max_cells_per_sheet: int, rules: list[dict[str, A
         "percent_format_candidates": percent_candidates,
         "configured_term_candidates": configured_term_candidates,
         "scan_truncated": truncated_any,
+        "formula_errors_status": "lower_bound" if truncated_any else "complete",
         "_strings": strings,
     }
 
@@ -207,19 +225,20 @@ def profile_workbooks(
         "percent_format_candidates": sum(len(item["percent_format_candidates"]) for item in workbooks),
         "configured_term_candidates": sum(len(item["configured_term_candidates"]) for item in workbooks),
         "stale_dimension_sheets": sum(
-            1 for item in workbooks for sheet in item["sheets"] if sheet["stale_declared_dimension"]
+            1 for item in workbooks for sheet in item["sheets"] if sheet["stale_declared_dimension"] is True
         ),
         "truncated_sheets": sum(1 for item in workbooks for sheet in item["sheets"] if sheet["scan_truncated"]),
     }
+    totals["formula_errors_status"] = "lower_bound" if totals["truncated_sheets"] else "complete"
     return {
         "contract_version": "data-lens-workbook-integrity/1.0",
-        "method": {"method_id": "data_lens.workbook_integrity", "version": "0.1.0"},
+        "method": {"method_id": "data_lens.workbook_integrity", "version": "0.1.1"},
         "limits": {"max_cells_per_sheet": max_cells_per_sheet, "cross_workbook_repeat_limit": 50},
         "workbooks": workbooks,
         "cross_workbook_repeat_candidates": repeats[:50],
         "totals": totals,
         "interpretation_boundary": (
-            "Formula errors are direct cell states. Percent formatting, configured terms, and cross-workbook repeats are review candidates, not confirmed semantic errors."
+            "Formula errors are direct cell states only within the scanned range. When scan_truncated=true, observed_dimension and formula-error counts are lower bounds and must never define the business aggregation row limit. Percent formatting, configured terms, and cross-workbook repeats are review candidates, not confirmed semantic errors."
         ),
     }
 
@@ -231,6 +250,10 @@ def main() -> None:
     parser.add_argument("--max-cells-per-sheet", type=int, default=200_000)
     parser.add_argument("--term-rules", type=Path)
     args = parser.parse_args()
+    try:
+        ensure_output_not_source(args.output, [*args.workbooks, *([args.term_rules] if args.term_rules else [])])
+    except ValueError as exc:
+        parser.error(str(exc))
     payload = profile_workbooks(args.workbooks, args.max_cells_per_sheet, args.term_rules)
     write_json(args.output, payload)
     print(json.dumps({"output": str(args.output.resolve()), "totals": payload["totals"]}, ensure_ascii=False))

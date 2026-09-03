@@ -1,0 +1,19 @@
+{
+  "chatlab": {"version": "synthetic-real-shape"},
+  "meta": {"name": "合成 AI 实践群", "platform": "wechat", "type": "group", "groupId": "synthetic-group@chatroom"},
+  "members": [
+    {"platformId": "member-a", "accountName": "甲", "avatar": ""},
+    {"platformId": "member-b", "accountName": "乙", "avatar": ""}
+  ],
+  "messages": [
+    {"sender": "synthetic-group@chatroom", "accountName": "合成 AI 实践群", "timestamp": 1767225600, "type": 80, "content": "合成群系统通知", "platformMessageId": "g-001"},
+    {"sender": "member-a", "accountName": "甲", "timestamp": 1767225660, "type": 0, "content": "Codex 安装后为什么没有响应？", "platformMessageId": "g-002"},
+    {"sender": "member-b", "accountName": "乙", "timestamp": 1767225720, "type": 25, "content": "先检查本地配置和日志。[引用 甲：Codex 安装后为什么没有响应？]", "platformMessageId": "g-003"},
+    {"sender": "member-a", "accountName": "甲", "timestamp": 1769904000, "type": 0, "content": "我想把每月店铺数据放进文件夹，直接定位问题，而不是只展示表格。", "platformMessageId": "g-004"},
+    {"sender": "member-b", "accountName": "乙", "timestamp": 1769904060, "type": 4, "content": "[文件] synthetic-workflow.md", "platformMessageId": "g-005"},
+    {"sender": "member-a", "accountName": "甲", "timestamp": 1769904120, "type": 0, "content": "这个方案需要先测试失败条件。", "platformMessageId": "g-006"},
+    {"sender": "member-b", "accountName": "乙", "timestamp": 1772323200, "type": 0, "content": "功能越来越多后维护变难，所以需要边界、版本和验收。", "platformMessageId": "g-007"},
+    {"sender": "member-a", "accountName": "甲", "timestamp": 1772323260, "type": 7, "content": "[群公告] 这里只交流合成测试资料。", "platformMessageId": "g-008"},
+    {"sender": "member-b", "accountName": "乙", "timestamp": 1772323320, "type": 0, "content": "不是所有事情都要自动化，单环节直接用工具即可。", "platformMessageId": "g-009"}
+  ]
+}

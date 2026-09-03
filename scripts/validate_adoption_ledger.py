@@ -5,15 +5,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-from _common import load_json, write_json
+from _common import guard_cli_output, load_json, write_json
 
 
 def validate(payload: Any) -> list[str]:
     errors: list[str] = []
     if not isinstance(payload, dict):
         return ["ledger must be a JSON object"]
-    if payload.get("contract_version") != "data-lens-adoption-ledger/1.0":
-        errors.append("contract_version must be data-lens-adoption-ledger/1.0")
+    contract_version = payload.get("contract_version")
+    if contract_version not in {"data-lens-adoption-ledger/1.0", "data-lens-angle-adoption-ledger/1.0"}:
+        errors.append("unsupported adoption ledger contract")
     request = payload.get("request")
     if not isinstance(request, dict) or not isinstance(request.get("succeeded"), bool):
         errors.append("request.succeeded must be boolean")
@@ -78,10 +79,19 @@ def validate(payload: Any) -> list[str]:
     allowed_completion = {"complete", "preliminary", "partial", "core_question_unanswered"}
     if completion not in allowed_completion:
         errors.append("completion_status is invalid")
-    if completion == "complete" and (not core_answered or adopted_count < 1):
-        errors.append("complete requires the core question to be answered by at least one adopted finding")
-    if not core_answered and completion != "core_question_unanswered":
-        errors.append("an unanswered core question requires completion_status=core_question_unanswered")
+    if contract_version == "data-lens-angle-adoption-ledger/1.0":
+        if core_answered is not False:
+            errors.append("angle adoption cannot mark the core question answered")
+        if summary.get("analysis_angle_available") is not (adopted_count > 0):
+            errors.append("summary.analysis_angle_available does not match adopted angles")
+        expected_completion = "preliminary" if adopted_count else "core_question_unanswered"
+        if completion != expected_completion:
+            errors.append(f"angle ledger completion_status must be {expected_completion}")
+    else:
+        if completion == "complete" and (not core_answered or adopted_count < 1):
+            errors.append("complete requires the core question to be answered by at least one adopted finding")
+        if not core_answered and completion != "core_question_unanswered":
+            errors.append("an unanswered core question requires completion_status=core_question_unanswered")
     return errors
 
 
@@ -90,6 +100,8 @@ def main() -> None:
     parser.add_argument("ledger", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if args.output:
+        guard_cli_output(parser, args.output, [args.ledger])
     errors = validate(load_json(args.ledger))
     result = {"valid": not errors, "errors": errors}
     if args.output:

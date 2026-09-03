@@ -16,6 +16,8 @@ python scripts/data_lens.py workbook-integrity <files.xlsx...> --output workbook
 - 跨工作簿完全相同的长文本：只是模板复用候选，不能自动称为串档；
 - 配置词命中：只有在任务提供了目标范围或审核词表时使用 `--term-rules`，命中仍需人工确认是否超出当前对象范围。
 
+`scan_truncated=true` 是强边界：此时 `observed_dimension` 只是已扫描区域的下界，公式错误数量也只是下界，二者都不能用来设置业务聚合的最大行。业务分析必须独立读取声明范围或完整数据记录，并保留空行/尾部样式的防护。若工作表缺少 dimension 元数据，结果会标记 `declared_dimension_status=missing_unsized`，脚本仍做有界扫描，不会为了合成范围强制无界遍历。
+
 不要把某次项目中的产品名、行业词或固定工作表行号写入全局规则。通用脚本保存位置和边界，领域判断留在本轮规则或证据卡中。
 
 ## WPS 单元格图片

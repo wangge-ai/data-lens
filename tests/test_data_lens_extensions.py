@@ -6,9 +6,11 @@ import json
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -18,7 +20,11 @@ sys.path.insert(0, str(SCRIPTS))
 from check_agent_compatibility import validate as validate_compatibility  # noqa: E402
 from check_public_tree import scan as scan_public_tree  # noqa: E402
 from build_synthesis_context import build_context  # noqa: E402
+from build_finding_synthesis_context import build_context as build_deep_context  # noqa: E402
+from _common import SKILL_VERSION, file_sha256, write_csv, write_json  # noqa: E402
 from compile_angle_discovery import compile_angles  # noqa: E402
+from compile_corpus_scope import compile_scope  # noqa: E402
+from compile_deep_findings import compile_findings  # noqa: E402
 from detect_capabilities import detect  # noqa: E402
 from local_vector_index import build_index, query_index  # noqa: E402
 from multimodal_inventory import collect  # noqa: E402
@@ -26,11 +32,14 @@ from ocr_evidence import parse_tsv, run_ocr  # noqa: E402
 from pdf_evidence import build_pdf_evidence, page_indices, parse_page_spec, parse_pdfinfo  # noqa: E402
 from profile_workbook_integrity import profile_workbooks  # noqa: E402
 from plan_analysis import build_plan  # noqa: E402
-from r_method_runner import probe, validate_result  # noqa: E402
+from r_method_runner import probe, run_method, validate_result  # noqa: E402
 from select_samples import build_sample  # noqa: E402
 from tabular_analysis import anomaly_candidates, change_candidate, grouped, profile, read_table  # noqa: E402
 from transcribe_media import build_transcription_evidence, clip_bounds  # noqa: E402
 from validate_adoption_ledger import validate as validate_adoption  # noqa: E402
+from validate_finding_ledger import validate as validate_finding_ledger  # noqa: E402
+from validate_corpus_scope_gate import validate as validate_scope_gate  # noqa: E402
+from validate_method_manifests import validate_repository as validate_method_manifests  # noqa: E402
 from video_evidence import build_video_evidence, evenly_spaced_timestamps, parse_duration_ms, parse_timestamp_spec  # noqa: E402
 from workbook_media import bounded_media_sample, inventory_workbook_media  # noqa: E402
 
@@ -56,7 +65,8 @@ class AngleDiscoveryExecutionTests(unittest.TestCase):
         self.assertTrue(ledger["candidates"][0]["evidence_valid"])
         self.assertTrue(ledger["candidates"][0]["adopted"])
         self.assertFalse(ledger["candidates"][1]["adopted"])
-        self.assertEqual(ledger["completion_status"], "partial")
+        self.assertEqual(ledger["completion_status"], "preliminary")
+        self.assertFalse(ledger["summary"]["core_question_answered"])
 
     def test_candidate_adapter_normalizes_bounded_model_aliases_before_validation(self) -> None:
         canonical = copy.deepcopy(self.candidates)
@@ -117,6 +127,129 @@ class AngleDiscoveryExecutionTests(unittest.TestCase):
         self.assertIn("card_budget", {item["reason"] for item in context["omitted"]})
 
 
+class CorpusScopeGateTests(unittest.TestCase):
+    def setUp(self) -> None:
+        root = ROOT / "fixtures" / "corpus-scope"
+        self.inventory = json.loads((root / "catch-all-inventory.json").read_text(encoding="utf-8"))
+        self.evidence = json.loads((root / "catch-all-evidence.json").read_text(encoding="utf-8"))
+        self.candidates = json.loads((root / "catch-all-candidates.json").read_text(encoding="utf-8"))
+
+    def test_catch_all_folder_stops_at_family_selection(self) -> None:
+        gate = compile_scope(self.candidates, self.evidence, self.inventory)
+        self.assertEqual(validate_scope_gate(gate), [])
+        self.assertEqual(gate["next_action"], "selection_required")
+        self.assertFalse(gate["deep_analysis_allowed"])
+        self.assertFalse(gate["whole_corpus_synthesis_allowed"])
+        self.assertEqual(gate["coverage"]["ready_family_count"], 3)
+        self.assertIn("SRC-U1", gate["coverage"]["unassigned_source_ids"])
+        plan = build_plan(self.candidates["decision_question"], self.inventory)
+        self.assertEqual(plan["primary_route"], "inventory_and_profile")
+        self.assertTrue(plan["corpus_shape"]["scope_gate_required"])
+        self.assertFalse(plan["corpus_scope_gate"]["deep_analysis_allowed"])
+
+    def test_selected_family_unlocks_only_that_family(self) -> None:
+        selected = copy.deepcopy(self.candidates)
+        selected["selection"] = {
+            "scope_type": "family",
+            "scope_id": "F-BUSINESS",
+            "basis": "user_selected",
+            "authorized_by_user": True,
+        }
+        gate = compile_scope(selected, self.evidence, self.inventory)
+        self.assertEqual(validate_scope_gate(gate), [])
+        self.assertEqual(gate["next_action"], "analysis_ready")
+        self.assertTrue(gate["deep_analysis_allowed"])
+        self.assertEqual(set(gate["selected_source_ids"]), {"SRC-B1", "SRC-B2"})
+        plan = build_plan(selected["decision_question"], self.inventory, gate)
+        self.assertEqual(plan["corpus_shape"]["canonical_items"], 2)
+        self.assertEqual(plan["corpus_scope_gate"]["selected_family_id"], "F-BUSINESS")
+        self.assertNotEqual(plan["primary_route"], "mixed_corpus")
+
+    def test_catch_all_cannot_be_authorized_as_whole_corpus(self) -> None:
+        selected = copy.deepcopy(self.candidates)
+        selected["selection"] = {
+            "scope_type": "whole_corpus",
+            "scope_id": "whole_corpus",
+            "basis": "explicit_shared_scope",
+            "authorized_by_user": True,
+        }
+        gate = compile_scope(selected, self.evidence, self.inventory)
+        self.assertFalse(gate["deep_analysis_allowed"])
+        self.assertIn("whole-corpus synthesis requires", " ".join(gate["selection"]["errors"]))
+
+
+class DeepFindingEngineTests(unittest.TestCase):
+    def setUp(self) -> None:
+        root = ROOT / "fixtures" / "deep-findings"
+        self.evidence = json.loads((root / "evidence-cards.json").read_text(encoding="utf-8"))
+        self.candidates = json.loads((root / "candidates.json").read_text(encoding="utf-8"))
+        self.inventory = {
+            "files": [
+                {"source_container_id": f"SRC-{letter}", "canonical": True, "path": f"sanitized/{letter}.md", "extension": ".md", "evidence_role": "content_text", "container_type": "article_candidate"}
+                for letter in "ABCD"
+            ],
+            "summary": {"canonical_items": 4},
+        }
+        scope_candidates = {
+            "decision_question": self.candidates["decision_question"],
+            "request": {"attempted": True, "succeeded": True, "provider": "fixture", "request_count": 1},
+            "shared_scope": {"shared_object_status": "confirmed", "shared_object": "同一批文章", "shared_problem_status": "confirmed", "shared_problem": "寻找可验证的结构实验变量", "question_spans_families": False, "evidence_refs": ["E-SCOPE"]},
+            "families": [{
+                "family_id": "F-ARTICLES", "label": "同一批文章", "shared_object": "四篇文章", "analysis_unit": "article",
+                "recommended_route": "qualitative_corpus", "source_container_ids": [f"SRC-{letter}" for letter in "ABCD"],
+                "candidate_questions": [self.candidates["decision_question"]], "readiness": "ready", "evidence_refs": ["E-SCOPE"],
+            }],
+            "selection": {"scope_type": "family", "scope_id": "F-ARTICLES", "basis": "user_selected", "authorized_by_user": True},
+        }
+        scope_evidence = {"cards": [{"id": "E-SCOPE", "claim": "四个来源属于同一批待分析文章。", "source": "sanitized-inventory.json", "locator": {"type": "json_pointer", "pointer": "/files"}, "verified": True, "family_id": "F-ARTICLES", "lane": "source_metadata"}]}
+        self.scope_gate = compile_scope(scope_candidates, scope_evidence, self.inventory)
+
+    def test_anchor_requires_full_deep_quality_chain(self) -> None:
+        ledger = compile_findings(self.candidates, self.evidence, self.scope_gate, ROOT / "fixtures" / "deep-findings")
+        self.assertEqual(validate_finding_ledger(ledger), [])
+        self.assertEqual(ledger["summary"]["adopted_count"], 1)
+        self.assertEqual(ledger["summary"]["anchor_finding_count"], 1)
+        self.assertTrue(ledger["summary"]["core_question_answered"])
+        self.assertTrue(ledger["candidates"][0]["anchor_eligible"])
+        self.assertFalse(ledger["candidates"][1]["adopted"])
+        self.assertIn("evidence_invalid", ledger["candidates"][1]["rejection_reason"])
+
+    def test_counterexample_search_cannot_be_skipped(self) -> None:
+        candidates = copy.deepcopy(self.candidates)
+        candidates["candidates"] = [candidates["candidates"][0]]
+        candidates["candidates"][0]["counterexample_search"] = {"status": "not_completed", "description": "尚未检查", "evidence_refs": []}
+        ledger = compile_findings(candidates, self.evidence, self.scope_gate, ROOT / "fixtures" / "deep-findings")
+        self.assertFalse(ledger["candidates"][0]["adopted"])
+        self.assertFalse(ledger["summary"]["core_question_answered"])
+
+    def test_missing_robustness_allows_no_anchor_completion(self) -> None:
+        candidates = copy.deepcopy(self.candidates)
+        candidates["candidates"] = [candidates["candidates"][0]]
+        candidates["candidates"][0]["robustness_checks"] = []
+        ledger = compile_findings(candidates, self.evidence, self.scope_gate, ROOT / "fixtures" / "deep-findings")
+        self.assertTrue(ledger["candidates"][0]["adopted"])
+        self.assertFalse(ledger["candidates"][0]["anchor_eligible"])
+        self.assertFalse(ledger["summary"]["core_question_answered"])
+        self.assertEqual(ledger["completion_status"], "partial")
+
+    def test_unselected_scope_blocks_finding_adoption(self) -> None:
+        blocked = copy.deepcopy(self.scope_gate)
+        blocked["next_action"] = "selection_required"
+        blocked["deep_analysis_allowed"] = False
+        ledger = compile_findings(self.candidates, self.evidence, blocked, ROOT / "fixtures" / "deep-findings")
+        self.assertEqual(ledger["summary"]["adopted_count"], 0)
+        self.assertTrue(all(not item["adopted"] for item in ledger["candidates"]))
+
+    def test_deep_synthesis_preserves_evidence_roles_and_boundaries(self) -> None:
+        ledger = compile_findings(self.candidates, self.evidence, self.scope_gate, ROOT / "fixtures" / "deep-findings")
+        context = build_deep_context(ledger, max_findings=2, max_cards=8, max_chars=10_000)
+        self.assertEqual(context["contract_version"], "data-lens-deep-synthesis-context/1.0")
+        self.assertEqual(context["budget"]["used_findings"], 1)
+        finding = context["adopted_findings"][0]
+        self.assertEqual(finding["evidence_roles"]["counter"], ["E-C1"])
+        self.assertTrue(finding["boundaries"])
+
+
 class WorkbookHardeningTests(unittest.TestCase):
     def _rewrite_dimension(self, path: Path, value: str) -> None:
         rewritten = path.with_name(path.stem + "-rewritten.xlsx")
@@ -127,6 +260,19 @@ class WorkbookHardeningTests(unittest.TestCase):
                     text = payload.decode("utf-8")
                     text = text.replace('ref="A1:C2"', f'ref="{value}"')
                     payload = text.encode("utf-8")
+                target.writestr(item, payload)
+        rewritten.replace(path)
+
+    def _remove_dimension(self, path: Path) -> None:
+        rewritten = path.with_name(path.stem + "-unsized.xlsx")
+        with zipfile.ZipFile(path, "r") as source, zipfile.ZipFile(rewritten, "w") as target:
+            for item in source.infolist():
+                payload = source.read(item.filename)
+                if item.filename == "xl/worksheets/sheet1.xml":
+                    text = payload.decode("utf-8")
+                    start = text.index("<dimension")
+                    end = text.index("/>", start) + 2
+                    payload = (text[:start] + text[end:]).encode("utf-8")
                 target.writestr(item, payload)
         rewritten.replace(path)
 
@@ -159,6 +305,30 @@ class WorkbookHardeningTests(unittest.TestCase):
             self.assertEqual(result["totals"]["stale_dimension_sheets"], 1)
             self.assertEqual(len(result["cross_workbook_repeat_candidates"]), 1)
             self.assertIn("not confirmed semantic errors", result["interpretation_boundary"])
+            self.assertEqual(result["totals"]["formula_errors_status"], "complete")
+            self.assertTrue(result["workbooks"][0]["sheets"][0]["safe_for_row_bound_inference"])
+
+    def test_workbook_integrity_handles_unsized_sheets_and_marks_truncation_as_lower_bound(self) -> None:
+        try:
+            from openpyxl import Workbook
+        except ImportError:
+            self.skipTest("openpyxl unavailable")
+        with tempfile.TemporaryDirectory() as temporary:
+            workbook_path = Path(temporary) / "unsized.xlsx"
+            workbook = Workbook()
+            sheet = workbook.active
+            for row in range(1, 21):
+                for column in range(1, 6):
+                    sheet.cell(row=row, column=column, value=f"R{row}C{column}")
+            workbook.save(workbook_path)
+            self._remove_dimension(workbook_path)
+            result = profile_workbooks([workbook_path], max_cells_per_sheet=10)
+            profile = result["workbooks"][0]["sheets"][0]
+            self.assertEqual(profile["declared_dimension_status"], "missing_unsized")
+            self.assertTrue(profile["scan_truncated"])
+            self.assertEqual(profile["observed_dimension_status"], "lower_bound_due_to_scan_limit")
+            self.assertFalse(profile["safe_for_row_bound_inference"])
+            self.assertEqual(result["totals"]["formula_errors_status"], "lower_bound")
 
     def test_wps_cell_images_are_located_and_sampled_across_sheets(self) -> None:
         try:
@@ -265,6 +435,134 @@ class VectorIndexTests(unittest.TestCase):
             self.assertIn("char_start", result["results"][0]["locator"])
             with self.assertRaises(FileExistsError):
                 build_index(source, database)
+
+    def test_replace_refuses_non_data_lens_file_without_changing_it(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source"
+            source.mkdir()
+            (source / "sample.md").write_text("合成向量样本。", encoding="utf-8")
+            ordinary = root / "important.txt"
+            ordinary.write_text("must remain unchanged", encoding="utf-8")
+            before = file_sha256(ordinary)
+            with self.assertRaisesRegex(ValueError, "Data Lens vector index"):
+                build_index(source, ordinary, replace=True)
+            self.assertEqual(file_sha256(ordinary), before)
+            self.assertEqual(ordinary.read_text(encoding="utf-8"), "must remain unchanged")
+
+    def test_failed_replace_keeps_previous_index_and_cleans_temporary_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source"
+            source.mkdir()
+            sample = source / "sample.md"
+            sample.write_text("初始合成样本。", encoding="utf-8")
+            database = root / "index.sqlite"
+            build_index(source, database, dimensions=128)
+            before = file_sha256(database)
+            with patch("local_vector_index.read_text_fallback", side_effect=RuntimeError("synthetic build failure")):
+                with self.assertRaisesRegex(RuntimeError, "synthetic build failure"):
+                    build_index(source, database, dimensions=128, replace=True)
+            self.assertEqual(file_sha256(database), before)
+            self.assertEqual(list(root.glob(f".{database.name}.*.tmp")), [])
+
+
+class FileWriteSafetyTests(unittest.TestCase):
+    def _assert_cli_collision_preserves(self, script: str, source: Path, extra: list[str] | None = None) -> None:
+        before = file_sha256(source)
+        completed = subprocess.run(
+            [sys.executable, str(SCRIPTS / script), str(source), *(extra or []), "--output", str(source)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        self.assertNotEqual(completed.returncode, 0, completed.stdout)
+        self.assertIn("must not overwrite", completed.stderr)
+        self.assertEqual(file_sha256(source), before)
+
+    def test_inventory_rejects_single_source_output_collision_without_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source.txt"
+            source.write_text("source bytes must remain unchanged", encoding="utf-8")
+            before = file_sha256(source)
+            completed = subprocess.run(
+                [sys.executable, str(SCRIPTS / "inventory_inputs.py"), str(source), "--output", str(source)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("must not overwrite", completed.stderr)
+            self.assertEqual(file_sha256(source), before)
+
+    def test_inventory_rejects_existing_file_inside_source_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source"
+            source.mkdir()
+            protected = source / "existing.json"
+            protected.write_text('{"source": true}', encoding="utf-8")
+            before = file_sha256(protected)
+            completed = subprocess.run(
+                [sys.executable, str(SCRIPTS / "inventory_inputs.py"), str(source), "--output", str(protected)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("must not overwrite", completed.stderr)
+            self.assertEqual(file_sha256(protected), before)
+
+    def test_profile_and_multimodal_clis_reject_collisions_before_parsing(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cases = (
+                ("profile_pdf_corpus.py", root / "source.pdf", ["--max-ocr-pages", "3"]),
+                ("profile_workbook_integrity.py", root / "source.xlsx", []),
+                ("multimodal_inventory.py", root / "source.png", []),
+                ("ocr_evidence.py", root / "ocr-source.png", []),
+            )
+            for script, source, extra in cases:
+                source.write_bytes(b"synthetic source bytes")
+                with self.subTest(script=script):
+                    self._assert_cli_collision_preserves(script, source, extra)
+
+    def test_r_adapter_rejects_input_output_collision_before_runtime_probe(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "input.json"
+            source.write_text('{"source": true}', encoding="utf-8")
+            before = file_sha256(source)
+            script = ROOT / "methods" / "implementations" / "r" / "descriptive_summary.R"
+            with self.assertRaisesRegex(ValueError, "must not overwrite"):
+                run_method(script, source, source)
+            self.assertEqual(file_sha256(source), before)
+
+    def test_atomic_json_failure_preserves_existing_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "ledger.json"
+            destination.write_text('{"stable": true}', encoding="utf-8")
+            before = file_sha256(destination)
+            with patch("_common.os.replace", side_effect=OSError("synthetic replace failure")):
+                with self.assertRaisesRegex(OSError, "synthetic replace failure"):
+                    write_json(destination, {"new": True})
+            self.assertEqual(file_sha256(destination), before)
+            self.assertEqual(list(destination.parent.glob(f".{destination.name}.*.tmp")), [])
+
+    def test_atomic_csv_failure_preserves_existing_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "ledger.csv"
+            destination.write_text("stable\n", encoding="utf-8")
+            before = file_sha256(destination)
+            with patch("_common.os.replace", side_effect=OSError("synthetic replace failure")):
+                with self.assertRaisesRegex(OSError, "synthetic replace failure"):
+                    write_csv(destination, ["value"], [{"value": "new"}])
+            self.assertEqual(file_sha256(destination), before)
+            self.assertEqual(list(destination.parent.glob(f".{destination.name}.*.tmp")), [])
 
 
 class MultimodalTests(unittest.TestCase):
@@ -472,6 +770,25 @@ class MultimodalTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "between 1 and 30"):
                 build_pdf_evidence(source, root / "other", max_pages=31, pdftoppm="synthetic", pdfinfo="synthetic")
 
+    def test_pdf_timeout_writes_failure_ledger_without_retry(self) -> None:
+        calls = 0
+
+        def timeout_runner(command, **kwargs):
+            nonlocal calls
+            calls += 1
+            raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "synthetic.pdf"
+            output = root / "evidence"
+            source.write_bytes(b"%PDF synthetic")
+            payload = build_pdf_evidence(source, output, runner=timeout_runner, pdftoppm="synthetic", pdfinfo="synthetic")
+            self.assertTrue((output / "pdf-evidence.json").is_file())
+        self.assertEqual(calls, 1)
+        self.assertEqual(payload["results"][0]["failure_ledger"][0]["stage"], "pdfinfo_timeout")
+        self.assertEqual(payload["results"][0]["recovery"]["next_attempt_requires"], "new_empty_output_directory")
+
     def test_video_timestamps_are_bounded_and_distributed(self) -> None:
         fixture = (ROOT / "fixtures" / "video" / "ffprobe-ten-seconds.json").read_text(encoding="utf-8")
         self.assertEqual(parse_duration_ms(fixture), 10_000)
@@ -519,6 +836,25 @@ class MultimodalTests(unittest.TestCase):
         self.assertTrue(result["frames"][0]["frame_sha256"])
         self.assertEqual(result["failure_ledger"][0]["retry_status"], "not_retried")
         self.assertEqual(result["semantic_review_status"], "not_reviewed")
+
+    def test_video_timeout_writes_failure_ledger_without_retry(self) -> None:
+        calls = 0
+
+        def timeout_runner(command, **kwargs):
+            nonlocal calls
+            calls += 1
+            raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "synthetic.mp4"
+            output = root / "evidence"
+            source.write_bytes(b"synthetic video")
+            payload = build_video_evidence(source, output, runner=timeout_runner, ffmpeg="synthetic", ffprobe="synthetic")
+            self.assertTrue((output / "video-evidence.json").is_file())
+        self.assertEqual(calls, 1)
+        self.assertEqual(payload["results"][0]["failure_ledger"][0]["stage"], "duration_probe_timeout")
+        self.assertFalse(payload["results"][0]["recovery"]["automatic_retry"])
 
     def test_transcription_requires_bounded_clip_and_local_checkpoint(self) -> None:
         self.assertEqual(clip_bounds(10_000, 1, None, None), (0, 10_000))
@@ -623,6 +959,35 @@ class MultimodalTests(unittest.TestCase):
         self.assertEqual(result["failure_ledger"][0]["stage"], "transcription")
         self.assertEqual(result["failure_ledger"][0]["retry_status"], "not_retried")
 
+    def test_transcription_timeout_writes_failure_ledger_without_retry(self) -> None:
+        calls = 0
+
+        def timeout_runner(command, **kwargs):
+            nonlocal calls
+            calls += 1
+            raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "synthetic.mp4"
+            model = root / "local-model.pt"
+            output = root / "evidence"
+            source.write_bytes(b"synthetic video")
+            model.write_bytes(b"synthetic model")
+            payload = build_transcription_evidence(
+                source,
+                output,
+                model_checkpoint=model,
+                runner=timeout_runner,
+                ffmpeg="synthetic",
+                ffprobe="synthetic",
+                whisper="synthetic",
+            )
+            self.assertTrue((output / "transcription-evidence.json").is_file())
+        self.assertEqual(calls, 1)
+        self.assertEqual(payload["results"][0]["failure_ledger"][0]["stage"], "duration_probe_timeout")
+        self.assertEqual(payload["results"][0]["recovery"]["resume_supported"], False)
+
 
 class AdoptionTests(unittest.TestCase):
     def test_request_success_and_adoption_success_are_separate(self) -> None:
@@ -725,18 +1090,29 @@ class TabularMethodTests(unittest.TestCase):
 
 
 class RepositoryTests(unittest.TestCase):
+    def test_skill_version_has_one_consistent_repository_source(self) -> None:
+        version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        registry = json.loads((ROOT / "methods" / "registry.json").read_text(encoding="utf-8"))
+        self.assertEqual(SKILL_VERSION, version)
+        self.assertEqual(project["project"]["version"], version)
+        self.assertEqual(registry["skill_version"], version)
+
     def test_all_method_manifests_have_registered_versions(self) -> None:
         registry = json.loads((ROOT / "methods" / "registry.json").read_text(encoding="utf-8"))
-        required = {
-            "contract_version", "method_id", "version", "status", "name", "question_types",
-            "accepted_units", "input_shapes", "eligibility_checks", "human_gates", "implementation",
-            "outputs", "evidence_requirements", "allowed_claims", "forbidden_claims", "validation",
-        }
+        schema = json.loads((ROOT / "contracts" / "method-manifest.schema.json").read_text(encoding="utf-8"))
+        required = set(schema["required"])
+        allowed = set(schema["properties"])
+        validation_statuses = set(schema["properties"]["validation"]["properties"]["status"]["enum"])
         for item in registry["methods"]:
             manifest = json.loads((ROOT / "methods" / item["manifest"]).read_text(encoding="utf-8"))
             self.assertEqual(required - manifest.keys(), set())
+            self.assertEqual(set(manifest) - allowed, set(), item["manifest"])
             self.assertEqual(manifest["method_id"], item["method_id"])
             self.assertEqual(manifest["version"], item["version"])
+            self.assertIn(manifest["validation"]["status"], validation_statuses, item["manifest"])
+        validation = validate_method_manifests(ROOT)
+        self.assertTrue(validation["valid"], validation["errors"])
 
     def test_public_tree_and_agent_compatibility(self) -> None:
         self.assertEqual(scan_public_tree(), [])

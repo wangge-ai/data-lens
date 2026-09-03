@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
-from _common import file_sha256, load_json, safe_number, write_json
+from _common import file_sha256, guard_cli_output, load_json, safe_number, write_json
 
 
 ANALYSIS_VERSION = "operational-analysis/1.0"
@@ -402,6 +402,8 @@ def main() -> None:
     parser.add_argument("--facts", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
+    for name in ("operational_analysis.json", "operational_quality_gate.json"):
+        guard_cli_output(parser, args.output_dir / name, [args.facts])
     payload = load_json(args.facts)
     analysis, quality = analyze(payload)
     args.output_dir.mkdir(parents=True, exist_ok=True)

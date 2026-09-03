@@ -1,19 +1,21 @@
 {
   "contract_version": "data-lens-method-manifest/1.0",
   "method_id": "data_lens.verified_evidence_synthesis_context",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "status": "experimental",
   "name": "已验证证据卡的有界跨来源综合上下文",
   "purpose": "Build a deterministic, budgeted synthesis packet from adopted angles and verified evidence cards only.",
   "question_types": ["cross_document_synthesis", "mixed_corpus"],
   "accepted_units": ["adopted_angle", "verified_evidence_card"],
-  "input_shapes": ["data_lens_adoption_ledger"],
+  "input_shapes": ["data_lens_angle_adoption_ledger"],
   "eligibility_checks": ["at least one angle is adopted", "at least one verified card fits the declared budget"],
+  "assumptions": ["the adoption ledger and evidence-card hashes are current for the same run"],
   "human_gates": ["review the final interpretation and preserve card caveats"],
   "implementation": {"runtime": "python", "entrypoint": "scripts/build_synthesis_context.py", "network_policy": "deny", "optional_dependencies": []},
   "outputs": ["bounded synthesis packet", "budget accounting", "omission ledger"],
+  "diagnostics": ["used and omitted card counts, character budget, and omission reasons"],
   "evidence_requirements": ["adopted angle", "verified evidence reference", "card and character budget"],
   "allowed_claims": ["which verified cards were admitted or omitted by budget"],
-  "forbidden_claims": ["omitted evidence does not exist", "a synthesis packet independently proves a causal or population claim"],
-  "validation": {"status": "synthetic_and_real_shape", "fixtures": ["fixtures/angle-discovery"]}
+  "forbidden_claims": ["omitted evidence does not exist", "an angle packet answers the core question", "a synthesis packet independently proves a causal or population claim"],
+  "validation": {"status": "regression_tested", "fixtures": ["fixtures/angle-discovery"]}
 }

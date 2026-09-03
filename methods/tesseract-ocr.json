@@ -8,11 +8,13 @@
   "accepted_units": ["image", "image_region"],
   "input_shapes": ["image_file"],
   "eligibility_checks": ["source image is readable", "Tesseract executable is installed", "requested local language data is installed"],
+  "assumptions": ["installed OCR language data and image quality are adequate for candidate extraction only"],
   "human_gates": ["review OCR candidates before using text for a semantic claim", "confirm the selected image or region is relevant to the decision question"],
   "implementation": {"runtime": "python", "entrypoint": "scripts/ocr_evidence.py", "network_policy": "deny", "optional_dependencies": ["Tesseract", "requested local traineddata"]},
   "outputs": ["bounded OCR candidates", "raw extracted text", "word and line confidence", "pixel locators", "algorithmic candidate recommendation"],
+  "diagnostics": ["engine return codes, stderr, word counts, confidence, and no-usable-candidate state"],
   "evidence_requirements": ["source hash", "full-frame or pixel-region locator", "OCR language and PSM", "raw candidate retained"],
   "allowed_claims": ["Tesseract produced this text candidate from the located source pixels with the recorded confidence"],
   "forbidden_claims": ["OCR text is semantically reviewed", "the highest-confidence candidate is automatically correct", "OCR completion adopts a finding"],
-  "validation": {"status": "fixture_and_real_shape", "fixtures": ["fixtures/ocr/mixed_chi_eng_psm6.tsv", "fixtures/ocr/mixed_chi_eng_psm11.tsv", "fixtures/ocr/quote-token.tsv"]}
+  "validation": {"status": "regression_tested", "fixtures": ["fixtures/ocr/mixed_chi_eng_psm6.tsv", "fixtures/ocr/mixed_chi_eng_psm11.tsv", "fixtures/ocr/quote-token.tsv"]}
 }

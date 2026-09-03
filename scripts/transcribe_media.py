@@ -128,40 +128,79 @@ def build_transcription_evidence(
         raise RuntimeError("FFmpeg, ffprobe, and the local Whisper CLI must all be available")
     source_hash_before = file_sha256(source)
     model_hash = file_sha256(model_checkpoint)
-    duration_ms = probe_duration(source, runner=runner, executable=ffprobe_command, timeout=min(timeout, 300))
-    clip_start, clip_end = clip_bounds(duration_ms, max_minutes, start_ms, end_ms)
     output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        duration_ms = probe_duration(source, runner=runner, executable=ffprobe_command, timeout=min(timeout, 300))
+    except subprocess.TimeoutExpired as exc:
+        failure = _failure("duration_probe_timeout", exc)
+        result = {
+            "source_path": str(source.resolve()),
+            "source_sha256": source_hash_before,
+            "source_unchanged": source_hash_before == file_sha256(source),
+            "source_duration_ms": None,
+            "clip_locator": None,
+            "clip_path": None,
+            "clip_sha256": None,
+            "model_checkpoint_sha256": model_hash,
+            "model_checkpoint_source": "explicit_local_path",
+            "network_download_requested": False,
+            "completion_status": "failed",
+            "speaker_review_status": "not_reviewed",
+            "semantic_review_status": "not_reviewed",
+            "adoption_status": "not_adopted",
+            "transcript": None,
+            "failure_ledger": [failure],
+            "recovery": {"automatic_retry": False, "resume_supported": False, "next_attempt_requires": "new_empty_output_directory"},
+        }
+        payload = {
+            "contract_version": "data-lens-method-result/1.0",
+            "method_id": METHOD_ID,
+            "method_version": METHOD_VERSION,
+            "status": "failed",
+            "results": [result],
+            "diagnostics": [{"failure_count": 1}, {"timed_out_stage": "duration_probe"}],
+            "boundaries": ["The timed-out command was not retried automatically; use a new empty output directory for an explicit retry."],
+        }
+        write_json(output_dir / "transcription-evidence.json", payload)
+        return payload
+    clip_start, clip_end = clip_bounds(duration_ms, max_minutes, start_ms, end_ms)
     clip_path = output_dir / "bounded-clip.wav"
     raw_dir = output_dir / "whisper-raw"
     raw_dir.mkdir()
     failures: list[dict[str, Any]] = []
     normalized: dict[str, Any] | None = None
-    clip_completed = _run(
-        runner,
-        [
-            ffmpeg_command,
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-ss",
-            f"{clip_start / 1000:.3f}",
-            "-t",
-            f"{(clip_end - clip_start) / 1000:.3f}",
-            "-i",
-            str(source.resolve()),
-            "-vn",
-            "-ac",
-            "1",
-            "-ar",
-            "16000",
-            "-c:a",
-            "pcm_s16le",
-            "-n",
-            str(clip_path.resolve()),
-        ],
-        min(timeout, 300),
-    )
-    if clip_completed.returncode or not clip_path.is_file():
+    try:
+        clip_completed = _run(
+            runner,
+            [
+                ffmpeg_command,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-ss",
+                f"{clip_start / 1000:.3f}",
+                "-t",
+                f"{(clip_end - clip_start) / 1000:.3f}",
+                "-i",
+                str(source.resolve()),
+                "-vn",
+                "-ac",
+                "1",
+                "-ar",
+                "16000",
+                "-c:a",
+                "pcm_s16le",
+                "-n",
+                str(clip_path.resolve()),
+            ],
+            min(timeout, 300),
+        )
+    except subprocess.TimeoutExpired as exc:
+        clip_completed = None
+        failures.append(_failure("audio_extraction_timeout", exc))
+    if clip_completed is None:
+        pass
+    elif clip_completed.returncode or not clip_path.is_file():
         message = (clip_completed.stderr or clip_completed.stdout).strip() or "ffmpeg did not create the bounded audio clip"
         failures.append(_failure("audio_extraction", message))
     else:
@@ -187,9 +226,15 @@ def build_transcription_evidence(
         ]
         if device == "cpu":
             command.extend(["--fp16", "False"])
-        completed = _run(runner, command, timeout)
+        try:
+            completed = _run(runner, command, timeout)
+        except subprocess.TimeoutExpired as exc:
+            completed = None
+            failures.append(_failure("transcription_timeout", exc))
         raw_path = raw_dir / "bounded-clip.json"
-        if completed.returncode or not raw_path.is_file():
+        if completed is None:
+            pass
+        elif completed.returncode or not raw_path.is_file():
             message = (completed.stderr or completed.stdout).strip() or "Whisper did not create the expected JSON"
             failures.append(_failure("transcription", message))
         else:
@@ -221,6 +266,7 @@ def build_transcription_evidence(
         "adoption_status": "not_adopted",
         "transcript": normalized,
         "failure_ledger": failures,
+        "recovery": None if not failures else {"automatic_retry": False, "resume_supported": False, "next_attempt_requires": "new_empty_output_directory"},
     }
     payload = {
         "contract_version": "data-lens-method-result/1.0",

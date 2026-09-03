@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from _common import SKILL_NAME, SKILL_VERSION, load_json, write_json
+from _common import SKILL_NAME, SKILL_VERSION, guard_cli_output, load_json, write_json
 
 
 PARSER_VERSION = "operational-parser/1.0"
@@ -93,6 +93,7 @@ def main() -> None:
     parser.add_argument("--parser-version", default=PARSER_VERSION)
     parser.add_argument("--metric-version", default=METRIC_VERSION)
     args = parser.parse_args()
+    guard_cli_output(parser, args.output, [args.inventory, *([args.previous_manifest] if args.previous_manifest else [])])
     previous = load_json(args.previous_manifest) if args.previous_manifest else None
     payload = prepare(load_json(args.inventory), previous, args.parser_version, args.metric_version)
     write_json(args.output, payload)

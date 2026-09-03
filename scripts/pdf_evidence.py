@@ -114,12 +114,41 @@ def build_pdf_evidence(
     if not render_command or not info_command:
         raise RuntimeError("Poppler pdftoppm and pdfinfo must both be available")
     source_hash_before = file_sha256(source)
-    info = _run(runner, [info_command, str(source.resolve())], timeout)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        info = _run(runner, [info_command, str(source.resolve())], timeout)
+    except subprocess.TimeoutExpired as exc:
+        failure = _failure(None, "pdfinfo_timeout", exc)
+        result = {
+            "source_path": str(source.resolve()),
+            "source_sha256": source_hash_before,
+            "source_unchanged": source_hash_before == file_sha256(source),
+            "page_count": None,
+            "selected_pages": [],
+            "selection_strategy": "not_started",
+            "max_pages": max_pages,
+            "completion_status": "failed",
+            "semantic_review_status": "not_reviewed",
+            "pages": [],
+            "failure_ledger": [failure],
+            "summary": {"selected": 0, "successful": 0, "failed": 0, "failure_count": 1},
+            "recovery": {"automatic_retry": False, "resume_supported": False, "next_attempt_requires": "new_empty_output_directory"},
+        }
+        payload = {
+            "contract_version": "data-lens-method-result/1.0",
+            "method_id": METHOD_ID,
+            "method_version": METHOD_VERSION,
+            "status": "failed",
+            "results": [result],
+            "diagnostics": [{"failure_count": 1}, {"timed_out_stage": "pdfinfo"}],
+            "boundaries": ["The timed-out command was not retried automatically; use a new empty output directory for an explicit retry."],
+        }
+        write_json(output_dir / "pdf-evidence.json", payload)
+        return payload
     if info.returncode:
         raise RuntimeError(f"pdfinfo failed: {(info.stderr or info.stdout).strip()[:1000]}")
     page_count = parse_pdfinfo(info.stdout)
     selected_pages = parse_page_spec(page_spec, page_count, max_pages) if page_spec else page_indices(page_count, max_pages)
-    output_dir.mkdir(parents=True, exist_ok=True)
     pages: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
     for page_number in selected_pages:
@@ -132,11 +161,18 @@ def build_pdf_evidence(
             "ocr_status": "pending" if run_page_ocr else "not_requested",
             "semantic_review_status": "not_reviewed",
         }
-        completed = _run(
-            runner,
-            [render_command, "-f", str(page_number), "-l", str(page_number), "-singlefile", "-png", "-r", str(dpi), str(source.resolve()), str(prefix.resolve())],
-            timeout,
-        )
+        try:
+            completed = _run(
+                runner,
+                [render_command, "-f", str(page_number), "-l", str(page_number), "-singlefile", "-png", "-r", str(dpi), str(source.resolve()), str(prefix.resolve())],
+                timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            record["render_status"] = "failed"
+            record["ocr_status"] = "blocked_by_render_failure" if run_page_ocr else "not_requested"
+            failures.append(_failure(page_number, "render_timeout", exc))
+            pages.append(record)
+            continue
         if completed.returncode or not rendered.is_file():
             message = (completed.stderr or completed.stdout).strip() or "pdftoppm did not create the expected PNG"
             record["render_status"] = "failed"
@@ -192,6 +228,7 @@ def build_pdf_evidence(
         "pages": pages,
         "failure_ledger": failures,
         "summary": {"selected": len(selected_pages), "successful": successful_pages, "failed": len(selected_pages) - successful_pages, "failure_count": len(failures)},
+        "recovery": None if not failures else {"automatic_retry": False, "resume_supported": False, "next_attempt_requires": "new_empty_output_directory"},
     }
     payload = {
         "contract_version": "data-lens-method-result/1.0",

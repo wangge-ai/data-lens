@@ -10,6 +10,7 @@ from typing import Any
 from _common import (
     SKILL_NAME,
     SKILL_VERSION,
+    ensure_output_not_source,
     file_sha256,
     normalize_title,
     parse_publish_stamp,
@@ -120,7 +121,7 @@ def collection_date_hint(path: Path) -> str | None:
     candidates = list(path.parts[-4:-1]) + [path.stem]
     for value in reversed(candidates):
         text = str(value).strip()
-        match = re.search(r"(?<!\d)(20\d{2})[-_.年/]?(\d{1,2})[-_.月/]?(\d{1,2})(?:日)?(?!\d)", text)
+        match = re.search(r"(?<!\d)(20\d{2})[-_.年/](\d{1,2})[-_.月/](\d{1,2})(?:日)?(?!\d)", text)
         if match:
             year, month, day = map(int, match.groups())
             if 1 <= month <= 12 and 1 <= day <= 31:
@@ -364,6 +365,10 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--hash-max-mb", type=int, default=64)
     args = parser.parse_args()
+    try:
+        ensure_output_not_source(args.output, args.paths)
+    except ValueError as exc:
+        parser.error(str(exc))
     payload = collect(args.paths, args.hash_max_mb)
     write_json(args.output, payload)
     print(f"inventory={args.output} physical={payload['summary']['physical_files']} canonical={payload['summary']['canonical_items']}")

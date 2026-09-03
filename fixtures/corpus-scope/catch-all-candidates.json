@@ -1,0 +1,48 @@
+{
+  "decision_question": "分析这个随手存放的文件夹，我不预设角度。",
+  "request": {"attempted": true, "succeeded": true, "provider": "sanitized-real-shape-fixture", "request_count": 1},
+  "shared_scope": {
+    "shared_object_status": "absent",
+    "shared_object": "",
+    "shared_problem_status": "absent",
+    "shared_problem": "",
+    "question_spans_families": false,
+    "evidence_refs": []
+  },
+  "families": [
+    {
+      "family_id": "F-WORKBUDDY",
+      "label": "WorkBuddy 智能体项目",
+      "shared_object": "同一个 WorkBuddy 项目包",
+      "analysis_unit": "技能、评测或版本组件",
+      "recommended_route": "qualitative_corpus",
+      "source_container_ids": ["SRC-W1", "SRC-W2"],
+      "candidate_questions": ["项目的能力合同、评测与实际实现是否一致？"],
+      "readiness": "ready",
+      "evidence_refs": ["E-W"]
+    },
+    {
+      "family_id": "F-BUSINESS",
+      "label": "经营与市场工作簿",
+      "shared_object": "经营和市场分析工作簿",
+      "analysis_unit": "工作表中的业务记录",
+      "recommended_route": "tabular_analysis",
+      "source_container_ids": ["SRC-B1", "SRC-B2"],
+      "candidate_questions": ["这些工作簿能回答哪些经营结构问题，口径是否兼容？"],
+      "readiness": "ready",
+      "evidence_refs": ["E-B"]
+    },
+    {
+      "family_id": "F-TRAINING",
+      "label": "AI 培训材料",
+      "shared_object": "AI 培训提纲",
+      "analysis_unit": "教学模块",
+      "recommended_route": "qualitative_corpus",
+      "source_container_ids": ["SRC-T1"],
+      "candidate_questions": ["课程结构覆盖了哪些能力，缺少哪些练习证据？"],
+      "readiness": "ready",
+      "evidence_refs": ["E-T"]
+    }
+  ],
+  "selection": {"scope_type": "none", "scope_id": null, "basis": "none", "authorized_by_user": false}
+}

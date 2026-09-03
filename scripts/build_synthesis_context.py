@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from _common import load_json, write_json
+from _common import guard_cli_output, load_json, write_json
 
 
 def _round_robin_refs(candidates: list[dict[str, Any]]) -> list[tuple[str, str]]:
@@ -33,7 +33,7 @@ def _round_robin_refs(candidates: list[dict[str, Any]]) -> list[tuple[str, str]]
 
 
 def build_context(ledger: dict[str, Any], max_cards: int = 24, max_chars: int = 24_000) -> dict[str, Any]:
-    if ledger.get("contract_version") != "data-lens-adoption-ledger/1.0":
+    if ledger.get("contract_version") not in {"data-lens-adoption-ledger/1.0", "data-lens-angle-adoption-ledger/1.0"}:
         raise ValueError("unsupported adoption ledger contract")
     if max_cards < 1 or max_chars < 200:
         raise ValueError("max_cards must be positive and max_chars must be at least 200")
@@ -96,6 +96,7 @@ def build_context(ledger: dict[str, Any], max_cards: int = 24, max_chars: int = 
             "Synthesize only from verified_evidence_cards.",
             "Do not convert source-stated or directional values into causal, population, or effectiveness claims.",
             "Retain each card's caveat and the adopted angle's failure condition.",
+            "An adopted angle authorizes bounded evidence synthesis but does not answer the core question; candidate findings must pass the deep finding adoption ledger.",
         ],
     }
 
@@ -107,6 +108,7 @@ def main() -> None:
     parser.add_argument("--max-cards", type=int, default=24)
     parser.add_argument("--max-chars", type=int, default=24_000)
     args = parser.parse_args()
+    guard_cli_output(parser, args.output, [args.ledger])
     payload = build_context(load_json(args.ledger), args.max_cards, args.max_chars)
     write_json(args.output, payload)
     print(json.dumps({"output": str(args.output.resolve()), "budget": payload["budget"], "omitted": len(payload["omitted"])}, ensure_ascii=False))

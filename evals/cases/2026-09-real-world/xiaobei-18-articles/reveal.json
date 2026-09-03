@@ -1,0 +1,17 @@
+{
+  "case_id": "xiaobei-18-articles",
+  "revealed_after_scoring": true,
+  "candidate_a": {
+    "identity": "Data Lens pre-release snapshot",
+    "skill_version": "0.8.1",
+    "score": 89
+  },
+  "candidate_b": {
+    "identity": "raw host agent",
+    "skill_version": null,
+    "score": 81
+  },
+  "delta_for_data_lens": 8,
+  "material_gain_signal": true,
+  "interpretation": "Data Lens won mainly through a tighter testable mechanism, stronger competing explanations, and a bounded experiment. The raw host was stronger on several internal tensions and more accurate on one corpus-size calculation."
+}

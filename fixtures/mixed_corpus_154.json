@@ -23,9 +23,9 @@
     "files": []
   },
   "expected": {
-    "primary_route": "mixed_corpus",
-    "comparison_unit": "family_specific",
-    "sampling_strategy": "family_stratified",
+    "primary_route": "inventory_and_profile",
+    "comparison_unit": "source_container_then_candidate_family",
+    "sampling_strategy": "full_census",
     "route_confidence": "high"
   }
 }

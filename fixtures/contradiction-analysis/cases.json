@@ -1,0 +1,158 @@
+{
+  "fixture_version": "data-lens-contradiction-analysis-fixtures/0.2",
+  "purpose": "Behavioral cases for distinguishing a real structural tension from confounding, a single-point fault, a stage shift, or no contradiction, while requiring structural candidates to outperform a plain explanation with divergent predictions.",
+  "reader_language": {
+    "default": "plain_modern_chinese",
+    "source_quotation_required": false,
+    "theory_terms_required": false
+  },
+  "cases": [
+    {
+      "case_id": "shared-review-capacity",
+      "case_type": "qualifying_structural_tension",
+      "scope_ready": true,
+      "expected_engine": "contradiction_engine",
+      "decision_question": "研发团队下一季度应优先增加发布速度还是降低缺陷返工？",
+      "observations": [
+        "新功能发布数连续三个月增加",
+        "线上缺陷和返工工时同步增加",
+        "发布前评审与缺陷复盘争用同一批高级工程师",
+        "增加一名独立评审者的小组没有出现同等幅度的缺陷上升"
+      ],
+      "expected_result": "select",
+      "ordinary_explanation": "缺陷增加只是因为需求复杂度随发布数量上升",
+      "counter_structure": "发布和质量通过同一批稀缺高级评审者耦合，评审争用而非发布数量本身造成返工",
+      "discriminating_prediction": "在需求复杂度相近时，拥有独立评审容量的小组不会随发布数出现同等缺陷增幅",
+      "coupling_carrier": "高级工程师评审容量",
+      "structural_key": "评审容量同时组织发布吞吐与缺陷返工",
+      "action_priority": "先在一个小组保护评审时段或增加独立评审者并比较结果",
+      "expected_mechanism": "发布吞吐与质量保障通过稀缺评审能力耦合；当前评审容量不足比抽象的速度与质量口号更接近核心制约",
+      "required_challenges": ["需求复杂度上升", "统计口径变化"],
+      "switch_condition": "评审容量、自动化覆盖或架构复杂度发生足以解除耦合的变化"
+    },
+    {
+      "case_id": "channel-mix-confounding",
+      "case_type": "apparent_tension",
+      "scope_ready": true,
+      "expected_engine": "contradiction_engine",
+      "decision_question": "更高销量是否必然牺牲利润率？",
+      "observations": [
+        "总体销量较高的月份利润率较低",
+        "按渠道分层后，各渠道内部销量与利润率没有稳定负关系",
+        "低利润率渠道在高销量月份占比显著提高"
+      ],
+      "expected_result": "not_applicable",
+      "expected_mechanism": "当前现象优先由渠道结构混杂解释，不能宣布销量与利润率存在结构性矛盾",
+      "required_challenges": ["渠道内促销强度", "成本计入时间"],
+      "switch_condition": "获得渠道内可比样本并发现稳定的负向作用链后再重评"
+    },
+    {
+      "case_id": "duplicate-fee-entry",
+      "case_type": "single_point_fault",
+      "scope_ready": true,
+      "expected_engine": null,
+      "decision_question": "本月利润突然下降是否说明增长模式失效？",
+      "observations": [
+        "利润下降集中在单日单个费用科目",
+        "核对凭证后发现同一平台费用被重复入账",
+        "更正后收入、单位贡献和退款率均无显著变化"
+      ],
+      "expected_result": "not_applicable",
+      "expected_mechanism": "这是可闭合的数据或记账故障，不应升级成增长与盈利的结构性矛盾",
+      "required_challenges": ["费用是否跨期", "是否还有未识别的重复记录"],
+      "switch_condition": "更正后若单位贡献仍随增长持续恶化，再进入结构分析"
+    },
+    {
+      "case_id": "stage-dependent-bottleneck",
+      "case_type": "stage_transition",
+      "scope_ready": true,
+      "expected_engine": "contradiction_engine",
+      "decision_question": "业务当前还应该继续加大获客投入吗？",
+      "observations": [
+        "早期订单增长主要受流量不足限制",
+        "流量翻倍后订单增长放缓，发货时效和退款率明显恶化",
+        "不同仓库在相同流量冲击下表现取决于可用履约容量"
+      ],
+      "expected_result": "select",
+      "ordinary_explanation": "新增流量的客户质量下降导致订单增长放缓和退款上升",
+      "counter_structure": "流量增长改变了主导约束，需求开始通过有限履约容量反过来损害成交与售后",
+      "discriminating_prediction": "在客户结构相近的流量冲击下，只有履约余量不足的仓库会同时出现时效恶化和退款上升；扩容后关系应减弱",
+      "coupling_carrier": "仓库履约容量",
+      "structural_key": "需求扩张与服务结果通过履约容量耦合",
+      "action_priority": "先在容量受限仓库做有界扩容或限流对照，再决定是否恢复获客投入",
+      "expected_mechanism": "核心制约已从获客不足转为需求扩张与履约容量之间的耦合",
+      "required_challenges": ["客户结构变化", "供应商质量变化"],
+      "switch_condition": "履约容量和服务水平恢复后，获客可能重新成为优先约束"
+    },
+    {
+      "case_id": "handle-time-rework-loop",
+      "case_type": "delayed_feedback",
+      "scope_ready": true,
+      "expected_engine": "contradiction_engine",
+      "decision_question": "客服团队应否继续压缩平均处理时长？",
+      "observations": [
+        "平均处理时长下降",
+        "首次联系解决率同步下降",
+        "七日内重复来电增加并重新占用客服容量",
+        "仅考核首次解决率的小组没有出现相同的重复来电增幅"
+      ],
+      "expected_result": "select",
+      "ordinary_explanation": "首次解决率下降只是因为近期问题更难或坐席经验不足",
+      "counter_structure": "压缩单次处理时长降低首次解决率，重复来电随后回流并消耗总容量",
+      "discriminating_prediction": "在问题难度和坐席熟练度相近时，取消单次时长压力或提升一次解决能力的小组应出现更少七日重复来电和更高总吞吐",
+      "coupling_carrier": "七日内重复来电占用的客服容量",
+      "structural_key": "局部时长指标通过重复来电反馈决定整体服务容量",
+      "action_priority": "先在一个可比小组调整考核并追踪七日总工时和重复来电",
+      "expected_mechanism": "短期处理速度通过重复来电反馈反过来消耗总服务容量，局部效率损害整体效率",
+      "required_challenges": ["问题难度变化", "坐席熟练度变化"],
+      "switch_condition": "分流、知识库或一次解决能力解除返工反馈后"
+    },
+    {
+      "case_id": "independent-improvement",
+      "case_type": "no_contradiction_control",
+      "scope_ready": true,
+      "expected_engine": "contradiction_engine",
+      "decision_question": "交付速度和满意度是否正在相互牵制？",
+      "observations": [
+        "自动化部署使交付时间缩短",
+        "满意度同期提高",
+        "没有发现两项结果争用同一资源或产生反向反馈",
+        "按团队和项目分层后结论一致"
+      ],
+      "expected_result": "not_applicable",
+      "expected_mechanism": "现有证据不支持相互牵制关系，应报告两项改善及仍需观察的边界",
+      "required_challenges": ["样本选择", "满意度测量变化"],
+      "switch_condition": "后续出现可定位的容量争用或负向反馈时"
+    },
+    {
+      "case_id": "simple-deterministic-answer",
+      "case_type": "ordinary_route_sufficient",
+      "scope_ready": true,
+      "expected_engine": null,
+      "decision_question": "把已经确认的三个部门销售额相加是多少？",
+      "observations": [
+        "三个部门销售额均已确认且口径一致",
+        "问题只要求确定性加总"
+      ],
+      "expected_result": "not_applicable",
+      "expected_mechanism": "普通确定性计算足以回答，不调用认知引擎",
+      "required_challenges": ["单位是否一致"],
+      "switch_condition": "用户转而询问部门表现差异为何出现时重新路由"
+    },
+    {
+      "case_id": "unscoped-mixed-folder",
+      "case_type": "scope_not_ready",
+      "scope_ready": false,
+      "expected_engine": null,
+      "decision_question": "看看这个混合文件夹里最本质的问题是什么",
+      "observations": [
+        "目录包含互不相关的课程、经营表、截图和软件项目",
+        "尚未确认共同对象、共同问题或可比较单位"
+      ],
+      "expected_result": "defer",
+      "expected_mechanism": "先完成资料群和共同问题选择，不能为了深度直接套用认知引擎",
+      "required_challenges": ["是否存在用户明确指定的跨群决策"],
+      "switch_condition": "选定资料群、分析单位和共同决策问题后重新路由"
+    }
+  ]
+}

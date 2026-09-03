@@ -1,0 +1,17 @@
+{
+  "case_id": "kazike-72-mhtml",
+  "revealed_after_scoring": true,
+  "candidate_a": {
+    "identity": "raw host agent",
+    "skill_version": null,
+    "score": 83.5
+  },
+  "candidate_b": {
+    "identity": "Data Lens pre-release snapshot",
+    "skill_version": "0.8.1",
+    "score": 88.5
+  },
+  "delta_for_data_lens": 5.0,
+  "material_gain_signal": true,
+  "interpretation": "Data Lens won through stronger causal calibration, competing explanations, reader focus, and tests tied to the mechanism. The raw host was stronger on cross-period tensions and contradiction coverage. Both missed an important internal counterexample in the security article."
+}

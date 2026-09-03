@@ -1,0 +1,10 @@
+{
+  "contract_version": "data-lens-deep-evidence-cards/1.0",
+  "cards": [
+    {"id": "E-S1", "claim": "文章 A 在开头先给出可见结果，再解释步骤。", "source": "sanitized-text-matrix.json", "source_sha256": "70c8d5868b25992d8b2610794bc763c178a1262ad6364b87a2fb5d0452c3bda3", "locator": {"type": "json_pointer", "pointer": "/articles/A/opening"}, "verified": true, "unit_id": "ARTICLE-A", "independence_group": "ARTICLE-A", "family_id": "F-ARTICLES", "lane": "content_text", "directness": "direct"},
+    {"id": "E-S2", "claim": "文章 C 同样采用结果前置结构。", "source": "sanitized-text-matrix.json", "source_sha256": "70c8d5868b25992d8b2610794bc763c178a1262ad6364b87a2fb5d0452c3bda3", "locator": {"type": "json_pointer", "pointer": "/articles/C/opening"}, "verified": true, "unit_id": "ARTICLE-C", "independence_group": "ARTICLE-C", "family_id": "F-ARTICLES", "lane": "content_text", "directness": "direct"},
+    {"id": "E-C1", "claim": "文章 D 没有结果前置，但仍给出完整步骤，是已审核的反例。", "source": "sanitized-text-matrix.json", "source_sha256": "70c8d5868b25992d8b2610794bc763c178a1262ad6364b87a2fb5d0452c3bda3", "locator": {"type": "json_pointer", "pointer": "/articles/D/opening"}, "verified": true, "unit_id": "ARTICLE-D", "independence_group": "ARTICLE-D", "family_id": "F-ARTICLES", "lane": "content_text", "directness": "direct", "caveat": "反例说明该结构不是每篇文章都采用。"},
+    {"id": "E-R1", "claim": "去除同内容副本后，四篇文章仍是不同正文单元。", "source": "sanitized-dedup-check.json", "source_sha256": "c02f223677ea01d256f9ede109bb89113ea10415484edb032a3e64a85c7d67f8", "locator": {"type": "json_pointer", "pointer": "/canonical_groups"}, "status": "derived_verified", "unit_id": "CORPUS-DEDUPE", "independence_group": "DETERMINISTIC-DEDUPE", "family_id": "F-ARTICLES", "lane": "source_metadata", "directness": "derived"},
+    {"id": "E-U1", "claim": "一条未经审核的标题可能也使用结果前置。", "source": "sanitized-retrieval.json", "source_sha256": "aa4193b4e44940dfe698214134705e1c93d21d5d2a080f5bf70ff84a0b57b221", "locator": {"type": "json_pointer", "pointer": "/hits/0"}, "verified": false, "unit_id": "ARTICLE-X", "independence_group": "ARTICLE-X", "family_id": "F-ARTICLES", "lane": "content_text", "directness": "derived"}
+  ]
+}

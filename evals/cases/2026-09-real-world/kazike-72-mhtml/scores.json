@@ -1,0 +1,34 @@
+{
+  "rubric_version": "data-lens-paired-analysis/0.2",
+  "candidate_a": {
+    "scores": {
+      "core_problem_selection": 13.5,
+      "cross_source_synthesis": 14,
+      "mechanism_and_causality": 16.5,
+      "contradiction_and_dynamics": 9.5,
+      "competing_explanations": 10,
+      "decision_value": 11.5,
+      "coverage_and_calibration": 4.5,
+      "reader_value": 4
+    },
+    "total": 83.5,
+    "severe_failures": []
+  },
+  "candidate_b": {
+    "scores": {
+      "core_problem_selection": 14,
+      "cross_source_synthesis": 13.5,
+      "mechanism_and_causality": 17.5,
+      "contradiction_and_dynamics": 8.5,
+      "competing_explanations": 12.5,
+      "decision_value": 14,
+      "coverage_and_calibration": 4,
+      "reader_value": 4.5
+    },
+    "total": 88.5,
+    "severe_failures": []
+  },
+  "winner": "B",
+  "material_gain_signal": true,
+  "identity_unknown_during_scoring": true
+}

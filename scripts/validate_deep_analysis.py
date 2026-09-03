@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from _common import file_sha256, load_json, write_json
+from validate_finding_ledger import validate as validate_finding_ledger
 from validate_mixed_workspace import validate_trace
 
 
@@ -20,7 +21,7 @@ VALID_REVIEW_STATUS = {"parsed", "matched", "ocr_complete", "semantically_review
 VALID_UNIT_STATUS = {"provisional", "confirmed"}
 VALID_CHECKLIST_STATUS = {"answered", "evidence_missing", "not_applicable"}
 VALID_METRIC_TYPES = {"exact", "proxy", "descriptive_count"}
-VALID_ROUTES = {"same_author_content", "account_content_performance", "method_corpus", "mixed_corpus", "novel_route"}
+VALID_ROUTES = {"same_author_content", "account_content_performance", "method_corpus", "qualitative_corpus", "mixed_corpus", "novel_route"}
 ROUTE_CHECKLISTS = {
     "same_author_content": {
         "topic_selection", "title_hook", "opening_structure", "body_structure", "writing_style",
@@ -33,6 +34,10 @@ ROUTE_CHECKLISTS = {
     "method_corpus": {
         "unit_definition", "method_steps", "conditions", "outcomes", "evidence_strength",
         "conflicts", "failure_boundaries", "next_action",
+    },
+    "qualitative_corpus": {
+        "decision_question", "unit_definition", "scope_and_sampling", "patterns_and_differences",
+        "counterexamples", "evidence_boundaries", "next_action",
     },
     "mixed_corpus": {
         "family_definition", "lane_boundaries", "family_patterns", "family_differences",
@@ -158,7 +163,7 @@ def validate_analysis(data: dict[str, Any]) -> dict[str, Any]:
             if label in forbidden_nav:
                 errors.append(f"presentation_toc_internal_label:{label}")
 
-    if contract_version in {"2.1", "2.2", "2.3"}:
+    if contract_version in {"2.1", "2.2", "2.3", "2.4"}:
         for key in ("analysis_intent", "sampling", "evidence_coverage", "experiments"):
             if key not in data:
                 errors.append(f"missing_top_level:{key}")
@@ -198,7 +203,7 @@ def validate_analysis(data: dict[str, Any]) -> dict[str, Any]:
                     errors.append(f"evidence_coverage_incomplete:{lane}:{key}")
             if item.get("status") not in VALID_COVERAGE_STATUS:
                 errors.append(f"evidence_coverage_status_invalid:{lane}:{item.get('status')}")
-            if contract_version in {"2.2", "2.3"}:
+            if contract_version in {"2.2", "2.3", "2.4"}:
                 states = item.get("processing_states")
                 if not isinstance(states, list) or not states:
                     errors.append(f"evidence_coverage_processing_missing:{lane}")
@@ -206,7 +211,7 @@ def validate_analysis(data: dict[str, Any]) -> dict[str, Any]:
                     errors.append(f"evidence_coverage_processing_invalid:{lane}")
 
     metric_ids: set[str] = set()
-    if contract_version in {"2.2", "2.3"}:
+    if contract_version in {"2.2", "2.3", "2.4"}:
         units = data.get("analysis_units")
         if not isinstance(units, dict):
             errors.append("analysis_units_missing")
@@ -258,7 +263,7 @@ def validate_analysis(data: dict[str, Any]) -> dict[str, Any]:
             if label.endswith("转化率") and (str(metric.get("numerator") or "").lower() in {"unknown", "未知"} or str(metric.get("denominator") or "").lower() in {"unknown", "未知"}):
                 errors.append(f"metric_conversion_label_unsupported:{metric_id}")
 
-    if contract_version == "2.3":
+    if contract_version in {"2.3", "2.4"}:
         completion_status = data.get("completion_status")
         if completion_status not in {"final", "preliminary"}:
             errors.append(f"completion_status_invalid:{completion_status}")
@@ -297,6 +302,31 @@ def validate_analysis(data: dict[str, Any]) -> dict[str, Any]:
             if units["selected_count"] + units["unselected_count"] > units["source_container_count"]:
                 errors.append("analysis_units_selection_partition_invalid")
 
+    finding_ledger: dict[str, Any] | None = None
+    if contract_version == "2.4":
+        binding = data.get("finding_adoption")
+        if not isinstance(binding, dict):
+            errors.append("finding_adoption_missing")
+        else:
+            ledger_path = Path(str(binding.get("ledger_path") or ""))
+            if not ledger_path.is_file():
+                errors.append(f"finding_adoption_ledger_missing:{ledger_path}")
+            else:
+                if str(binding.get("sha256") or "") != file_sha256(ledger_path):
+                    errors.append("finding_adoption_hash_mismatch")
+                finding_ledger = load_json(ledger_path)
+                ledger_errors = validate_finding_ledger(finding_ledger)
+                errors.extend(f"finding_adoption_invalid:{message}" for message in ledger_errors)
+                intent_question = str((data.get("analysis_intent") or {}).get("decision_question") or "").strip()
+                if str(finding_ledger.get("decision_question") or "").strip() != intent_question:
+                    errors.append("finding_adoption_decision_question_mismatch")
+                summary = finding_ledger.get("summary") or {}
+                if data.get("completion_status") == "final" and (
+                    summary.get("core_question_answered") is not True
+                    or int(summary.get("anchor_finding_count") or 0) < 1
+                ):
+                    errors.append("final_requires_anchor_finding")
+
     collections = {name: data.get(name, []) for name in ("evidence", "findings", "comparisons", "recommendations")}
     id_sets: dict[str, set[str]] = {}
     all_ids: set[str] = set()
@@ -313,8 +343,8 @@ def validate_analysis(data: dict[str, Any]) -> dict[str, Any]:
         all_ids.update(ids)
 
     for item in data.get("evidence", []):
-        validate_evidence(item, errors, strict_trace=contract_version == "2.3")
-        if contract_version in {"2.2", "2.3"}:
+        validate_evidence(item, errors, strict_trace=contract_version in {"2.3", "2.4"})
+        if contract_version in {"2.2", "2.3", "2.4"}:
             evidence_id = item.get("id", "<missing>")
             for key in ("lane", "review_status", "source_family"):
                 if item.get(key) in (None, ""):
@@ -336,7 +366,7 @@ def validate_analysis(data: dict[str, Any]) -> dict[str, Any]:
         for key in ("counterexamples", "boundaries", "recommendation_ids", "evidence_ids"):
             if key in finding and not isinstance(finding.get(key), list):
                 errors.append(f"finding_list_invalid:{fid}:{key}")
-        if contract_version in {"2.2", "2.3"} and finding.get("classification") == "calculation":
+        if contract_version in {"2.2", "2.3", "2.4"} and finding.get("classification") == "calculation":
             if (data.get("analysis_units") or {}).get("unit_status") != "confirmed":
                 errors.append(f"finding_calculation_requires_confirmed_unit:{fid}")
             if not isinstance(finding.get("metric_ids"), list) or not finding.get("metric_ids"):
@@ -375,11 +405,11 @@ def validate_analysis(data: dict[str, Any]) -> dict[str, Any]:
         for finding_id in recommendation.get("finding_ids", []):
             if finding_id not in id_sets.get("findings", set()):
                 errors.append(f"recommendation_finding_missing:{rid}:{finding_id}")
-        if contract_version == "2.3" and recommendation.get("priority") not in {"now", "next", "later"}:
+        if contract_version in {"2.3", "2.4"} and recommendation.get("priority") not in {"now", "next", "later"}:
             errors.append(f"recommendation_priority_invalid:{rid}:{recommendation.get('priority')}")
 
     experiments = data.get("experiments", [])
-    if contract_version in {"2.1", "2.2", "2.3"} and data.get("route") in {"same_author_content", "account_content_performance"} and data.get("recommendations") and not experiments:
+    if contract_version in {"2.1", "2.2", "2.3", "2.4"} and data.get("route") in {"same_author_content", "account_content_performance"} and data.get("recommendations") and not experiments:
         errors.append("experiments_required_for_editorial_route")
     experiment_ids: set[str] = set()
     for experiment in experiments:
@@ -403,7 +433,7 @@ def validate_analysis(data: dict[str, Any]) -> dict[str, Any]:
             if finding_id not in id_sets.get("findings", set()):
                 errors.append(f"experiment_finding_missing:{experiment_id}:{finding_id}")
 
-    if contract_version in {"2.2", "2.3"}:
+    if contract_version in {"2.2", "2.3", "2.4"}:
         checklist = data.get("analysis_checklist")
         if not isinstance(checklist, list) or not checklist:
             errors.append("analysis_checklist_empty")
@@ -433,6 +463,13 @@ def validate_analysis(data: dict[str, Any]) -> dict[str, Any]:
         required_checklist = ROUTE_CHECKLISTS.get(str(data.get("route") or ""), set())
         for missing_id in sorted(required_checklist - checklist_ids):
             errors.append(f"analysis_checklist_route_item_missing:{missing_id}")
+        if contract_version == "2.4" and data.get("completion_status") == "final":
+            incomplete_required = [
+                checklist_id for checklist_id in required_checklist
+                if next((item.get("status") for item in checklist if item.get("id") == checklist_id), None) == "evidence_missing"
+            ]
+            if incomplete_required:
+                errors.append("final_required_checklist_unanswered:" + ",".join(sorted(incomplete_required)))
 
         visual_available = any(
             item.get("lane") == "visual_layout" and item.get("status") == "available"
@@ -444,7 +481,26 @@ def validate_analysis(data: dict[str, Any]) -> dict[str, Any]:
         ):
             errors.append("visual_coverage_available_without_semantic_evidence")
 
-    if depth == "deep":
+    if contract_version == "2.4" and finding_ledger is not None:
+        report_finding_ids = id_sets.get("findings", set())
+        adopted_ids = {
+            str(item.get("finding_id"))
+            for item in finding_ledger.get("candidates", [])
+            if item.get("adopted") is True
+        }
+        anchor_ids = {
+            str(item.get("finding_id"))
+            for item in finding_ledger.get("candidates", [])
+            if item.get("anchor_eligible") is True
+        }
+        missing_adopted = adopted_ids - report_finding_ids
+        if missing_adopted:
+            errors.append("report_omits_adopted_findings:" + ",".join(sorted(missing_adopted)))
+        declared_anchor_ids = data.get("finding_adoption", {}).get("anchor_finding_ids")
+        if not isinstance(declared_anchor_ids, list) or set(map(str, declared_anchor_ids)) != anchor_ids:
+            errors.append("finding_adoption_anchor_ids_mismatch")
+
+    if depth == "deep" and contract_version != "2.4":
         route = data.get("route")
         if route == "account_content_performance":
             minimums = {"findings": 6, "comparisons": 3, "analysis_sections": 4, "recommendations": 4, "evidence": 12}

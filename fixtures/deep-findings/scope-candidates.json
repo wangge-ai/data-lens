@@ -1,0 +1,26 @@
+{
+  "decision_question": "这批文章中有哪些值得用于下一轮内容实验的结构模式？",
+  "request": {"attempted": true, "succeeded": true, "provider": "sanitized-real-shape-fixture", "request_count": 1},
+  "shared_scope": {
+    "shared_object_status": "confirmed",
+    "shared_object": "同一批文章",
+    "shared_problem_status": "confirmed",
+    "shared_problem": "寻找可验证的结构实验变量",
+    "question_spans_families": false,
+    "evidence_refs": ["E-SCOPE"]
+  },
+  "families": [
+    {
+      "family_id": "F-ARTICLES",
+      "label": "同一批文章",
+      "shared_object": "四篇文章",
+      "analysis_unit": "article",
+      "recommended_route": "qualitative_corpus",
+      "source_container_ids": ["SRC-A", "SRC-B", "SRC-C", "SRC-D"],
+      "candidate_questions": ["这批文章中有哪些值得用于下一轮内容实验的结构模式？"],
+      "readiness": "ready",
+      "evidence_refs": ["E-SCOPE"]
+    }
+  ],
+  "selection": {"scope_type": "family", "scope_id": "F-ARTICLES", "basis": "user_selected", "authorized_by_user": true}
+}

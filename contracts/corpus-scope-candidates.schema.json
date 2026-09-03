@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/corpus-scope-candidates.schema.json",
+  "title": "Data Lens Corpus Scope Candidates 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision_question", "request", "shared_scope", "families", "selection"],
+  "properties": {
+    "decision_question": {"type": "string", "minLength": 1},
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted", "succeeded", "request_count"],
+      "properties": {
+        "attempted": {"type": "boolean"},
+        "succeeded": {"type": "boolean"},
+        "provider": {"type": ["string", "null"]},
+        "request_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "shared_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shared_object_status", "shared_object", "shared_problem_status", "shared_problem", "question_spans_families", "evidence_refs"],
+      "properties": {
+        "shared_object_status": {"enum": ["confirmed", "candidate", "absent"]},
+        "shared_object": {"type": "string"},
+        "shared_problem_status": {"enum": ["confirmed", "candidate", "absent"]},
+        "shared_problem": {"type": "string"},
+        "question_spans_families": {"type": "boolean"},
+        "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "families": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["family_id", "label", "shared_object", "analysis_unit", "recommended_route", "source_container_ids", "candidate_questions", "readiness", "evidence_refs"],
+        "properties": {
+          "family_id": {"type": "string", "minLength": 1},
+          "label": {"type": "string", "minLength": 1},
+          "shared_object": {"type": "string", "minLength": 1},
+          "analysis_unit": {"type": "string", "minLength": 1},
+          "recommended_route": {"enum": ["tabular_analysis", "repeated_operational_tables", "qualitative_corpus", "same_author_content", "account_content_performance", "method_corpus", "multimodal_evidence", "mixed_corpus", "novel_route"]},
+          "source_container_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "candidate_questions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "readiness": {"enum": ["ready", "needs_review", "not_analyzable"]},
+          "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_type", "scope_id", "basis", "authorized_by_user"],
+      "properties": {
+        "scope_type": {"enum": ["none", "family", "whole_corpus"]},
+        "scope_id": {"type": ["string", "null"]},
+        "basis": {"enum": ["none", "user_selected", "explicit_shared_scope", "automatic_unique_ready"]},
+        "authorized_by_user": {"type": "boolean"}
+      }
+    }
+  }
+}

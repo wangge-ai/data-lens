@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/deep-evidence-cards.schema.json",
+  "title": "Data Lens Deep Evidence Cards 1.0",
+  "type": "object",
+  "required": ["cards"],
+  "properties": {
+    "cards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "claim", "source", "source_sha256", "locator", "unit_id", "independence_group", "family_id", "lane", "directness"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "claim": {"type": "string", "minLength": 1},
+          "source": {"type": "string", "minLength": 1},
+          "source_sha256": {"type": "string", "pattern": "^[0-9A-Fa-f]{64}$"},
+          "locator": {"type": "object"},
+          "verified": {"type": "boolean"},
+          "status": {"type": "string"},
+          "unit_id": {"type": "string", "minLength": 1},
+          "independence_group": {"type": "string", "minLength": 1},
+          "family_id": {"type": "string", "minLength": 1},
+          "lane": {"type": "string", "minLength": 1},
+          "directness": {"enum": ["direct", "derived", "source_stated"]},
+          "caveat": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

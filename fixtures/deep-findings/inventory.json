@@ -1,0 +1,10 @@
+{
+  "inventory_version": "1.1",
+  "summary": {"canonical_items": 4, "by_evidence_role": {"content_text": 4}, "by_container_type": {"article_candidate": 4}},
+  "files": [
+    {"source_container_id": "SRC-A", "canonical": true, "path": "sanitized/A.md", "extension": ".md", "evidence_role": "content_text", "container_type": "article_candidate"},
+    {"source_container_id": "SRC-B", "canonical": true, "path": "sanitized/B.md", "extension": ".md", "evidence_role": "content_text", "container_type": "article_candidate"},
+    {"source_container_id": "SRC-C", "canonical": true, "path": "sanitized/C.md", "extension": ".md", "evidence_role": "content_text", "container_type": "article_candidate"},
+    {"source_container_id": "SRC-D", "canonical": true, "path": "sanitized/D.md", "extension": ".md", "evidence_role": "content_text", "container_type": "article_candidate"}
+  ]
+}

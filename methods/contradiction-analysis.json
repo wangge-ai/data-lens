@@ -1,0 +1,74 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.contradiction_analysis",
+  "version": "0.2.0",
+  "status": "experimental",
+  "name": "结构性矛盾分析",
+  "purpose": "Identify whether several visible problems are coupled by a shared carrier, constraint, or feedback mechanism; distinguish the structural key mechanism from the current action priority; and turn competing structures into divergent predictions and a practical test.",
+  "question_types": ["problem_discovery", "explanation", "decision", "planning"],
+  "accepted_units": ["verified_observation", "relationship_candidate", "mechanism_hypothesis", "decision_option"],
+  "input_shapes": ["decision_question", "verified_evidence_cards", "deterministic_baseline", "candidate_findings"],
+  "eligibility_checks": [
+    "the decision objective and system boundary can be stated",
+    "evidence contains a plausible coupling, trade-off, feedback loop, heterogeneous response, or stage-dependent driver shift",
+    "the ordinary explanation can be preserved while a structurally different explanation is tested",
+    "a non-contradiction explanation such as measurement error, confounding, or a single-point fault can still be considered"
+  ],
+  "assumptions": [
+    "a contradiction is a relationship between interdependent mechanisms, not a synonym for any difference or negative metric",
+    "the dominant relationship and dominant side are scoped to a stated object, period, and decision",
+    "the structural key mechanism and the most practical next action may differ",
+    "causal strength remains limited by the underlying study design"
+  ],
+  "human_gates": [],
+  "implementation": {
+    "runtime": "host_agent",
+    "entrypoint": "references/contradiction-engine.md",
+    "network_policy": "deny",
+    "optional_dependencies": []
+  },
+  "outputs": [
+    "bounded map of candidate structural tensions",
+    "concrete coupling carrier and divergent predictions versus the ordinary explanation",
+    "separate structural-key and action-priority rankings or an explicit not-applicable result",
+    "competing explanation and discriminating test",
+    "plain-language decision brief with switch conditions"
+  ],
+  "diagnostics": [
+    "missing shared constraint or interaction mechanism",
+    "candidate is only a relabeling of the ordinary explanation",
+    "apparent contradiction explained by aggregation, measurement, or sample composition",
+    "structural importance and action priority were conflated",
+    "insufficient evidence for a dominant relationship or stage transition",
+    "recommended next observation or low-risk test"
+  ],
+  "evidence_requirements": [
+    "locatable evidence for each visible phenomenon",
+    "evidence for the proposed coupling or a clearly marked mechanism hypothesis",
+    "a source-role and conflict map for multi-source evidence",
+    "at least one prediction that differs from the ordinary explanation",
+    "at least one counterexample or completed counterexample search",
+    "at least one competing non-contradiction explanation",
+    "a stated scope, stage, and condition that could reverse the conclusion"
+  ],
+  "allowed_claims": [
+    "a structural tension is the best-supported current explanation within a stated scope",
+    "one side currently dominates the observed result within a stated period or condition",
+    "the structurally central mechanism differs from the safest or fastest current action",
+    "the available evidence does not support a structural-contradiction interpretation",
+    "a specified observation or intervention would distinguish competing explanations"
+  ],
+  "forbidden_claims": [
+    "every difference, disagreement, or pair of opposing metrics is a contradiction",
+    "the largest negative contribution is automatically the primary contradiction",
+    "the easiest action or highest information-gain test is automatically the structural key mechanism",
+    "a historical analogy or theoretical quotation is evidence about the current case",
+    "a mechanism hypothesis is causal proof without an eligible design",
+    "the dominant relationship is permanent across stages or system boundaries",
+    "reader-facing reports must quote or name the intellectual source"
+  ],
+  "validation": {
+    "status": "fixture_only",
+    "fixtures": ["fixtures/contradiction-analysis"]
+  }
+}

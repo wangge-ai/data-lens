@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/deep-finding-candidates.schema.json",
+  "title": "Data Lens Deep Finding Candidates 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision_question", "request", "candidates"],
+  "properties": {
+    "decision_question": {"type": "string", "minLength": 1},
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted", "succeeded", "request_count"],
+      "properties": {
+        "attempted": {"type": "boolean"},
+        "succeeded": {"type": "boolean"},
+        "provider": {"type": ["string", "null"]},
+        "request_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["finding_id", "title", "claim", "claim_level", "analysis_unit", "decision_relevance", "baseline", "coverage", "supporting_evidence_refs", "counterexample_search", "alternative_explanations", "robustness_checks", "boundaries", "decision_delta", "confidence", "proposed_status"],
+        "properties": {
+          "finding_id": {"type": "string", "minLength": 1},
+          "title": {"type": "string", "minLength": 1},
+          "claim": {"type": "string", "minLength": 1},
+          "claim_level": {"enum": ["fact", "calculation", "pattern", "relationship", "mechanism_hypothesis"]},
+          "analysis_unit": {"type": "string", "minLength": 1},
+          "decision_relevance": {"type": "string", "minLength": 1},
+          "baseline": {"type": "string", "minLength": 1},
+          "coverage": {
+            "type": "object",
+            "required": ["strategy", "eligible_units", "reviewed_units", "independent_source_groups", "limitations"],
+            "properties": {
+              "strategy": {"type": "string", "minLength": 1},
+              "eligible_units": {"type": ["integer", "null"], "minimum": 0},
+              "reviewed_units": {"type": "integer", "minimum": 1},
+              "independent_source_groups": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+              "limitations": {"type": "array", "items": {"type": "string", "minLength": 1}}
+            }
+          },
+          "supporting_evidence_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "counterexample_search": {
+            "type": "object",
+            "required": ["status", "description", "evidence_refs"],
+            "properties": {
+              "status": {"enum": ["completed_none_found", "completed_with_counterexamples", "not_completed"]},
+              "description": {"type": "string", "minLength": 1},
+              "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}}
+            }
+          },
+          "alternative_explanations": {"type": "array"},
+          "robustness_checks": {"type": "array"},
+          "boundaries": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "decision_delta": {"type": "string", "minLength": 1},
+          "confidence": {"enum": ["high", "medium", "low"]},
+          "proposed_status": {"enum": ["adopted", "rejected"]},
+          "rejection_reason": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

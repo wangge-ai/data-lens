@@ -1,0 +1,21 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.corpus_scope_gate",
+  "version": "1.0.0",
+  "status": "experimental",
+  "name": "资料群选择门",
+  "purpose": "Compile proposed corpus families into an auditable gate that blocks whole-folder synthesis until a coherent family or verified cross-family question is explicitly selected.",
+  "question_types": ["open_ended_analysis", "mixed_directory", "inventory_then_analysis"],
+  "accepted_units": ["source_container", "candidate_family", "selected_scope"],
+  "input_shapes": ["inventory", "family_candidate_json", "verified_evidence_cards"],
+  "eligibility_checks": ["original decision question is preserved", "canonical source ids exist", "ready families have verified scope evidence", "selection is explicitly authorized"],
+  "assumptions": ["inventory identifiers and verified scope evidence describe the same locked source snapshot"],
+  "human_gates": ["confirm semantic family membership", "select one family or explicitly authorize a verified whole-corpus question"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/compile_corpus_scope.py", "network_policy": "deny", "optional_dependencies": []},
+  "outputs": ["family catalog", "unassigned source ledger", "selection status", "whole-corpus synthesis permission", "next action"],
+  "diagnostics": ["unassigned sources, family evidence failures, selection conflicts, and readiness counts"],
+  "evidence_requirements": ["inventory source ids", "verified family evidence", "selection authorization"],
+  "allowed_claims": ["which sources are provisionally grouped", "whether a selected scope may proceed to analysis"],
+  "forbidden_claims": ["largest family is the folder's core", "same directory proves semantic relation", "unselected families may be synthesized"],
+  "validation": {"status": "regression_tested", "fixtures": ["fixtures/corpus-scope"]}
+}

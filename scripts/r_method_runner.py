@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from _common import file_sha256, load_json
+from _common import atomic_output_path, ensure_output_not_source, file_sha256, load_json
 
 
 SKILL_ROOT = Path(__file__).resolve().parent.parent
@@ -52,29 +52,30 @@ def _registered_script(path: Path) -> Path:
 
 
 def run_method(script: Path, input_path: Path, output_path: Path, *, timeout: int = 120) -> dict[str, Any]:
-    executable = shutil.which("Rscript")
-    if not executable:
-        raise RuntimeError("Rscript is unavailable; Data Lens does not install R automatically")
     registered = _registered_script(script)
     if not input_path.is_file():
         raise FileNotFoundError(input_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    completed = subprocess.run(
-        [executable, "--vanilla", str(registered), str(input_path.resolve()), str(output_path.resolve())],
-        cwd=SKILL_ROOT,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=timeout,
-        check=False,
-    )
-    if completed.returncode:
-        raise RuntimeError(f"R method failed with exit {completed.returncode}: {completed.stderr.strip()[:1000]}")
-    payload = load_json(output_path)
-    errors = validate_result(payload)
-    if errors:
-        raise ValueError("; ".join(errors))
+    ensure_output_not_source(output_path, [registered, input_path])
+    executable = shutil.which("Rscript")
+    if not executable:
+        raise RuntimeError("Rscript is unavailable; Data Lens does not install R automatically")
+    with atomic_output_path(output_path) as temporary:
+        completed = subprocess.run(
+            [executable, "--vanilla", str(registered), str(input_path.resolve()), str(temporary.resolve())],
+            cwd=SKILL_ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
+        )
+        if completed.returncode:
+            raise RuntimeError(f"R method failed with exit {completed.returncode}: {completed.stderr.strip()[:1000]}")
+        payload = load_json(temporary)
+        errors = validate_result(payload)
+        if errors:
+            raise ValueError("; ".join(errors))
     return {
         "contract_version": "data-lens-r-run/1.0",
         "script_sha256": file_sha256(registered),

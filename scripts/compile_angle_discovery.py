@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from _common import load_json, write_json
+from _common import guard_cli_output, load_json, write_json
 
 
 VERIFIED_STATUSES = {
@@ -233,17 +233,18 @@ def compile_angles(candidate_payload: Any, evidence_payload: Any) -> dict[str, A
         )
     adopted_count = sum(1 for row in compiled if row["adopted"])
     return {
-        "contract_version": "data-lens-adoption-ledger/1.0",
+        "contract_version": "data-lens-angle-adoption-ledger/1.0",
         "request": request_record,
         "evidence_index": evidence_index,
         "candidates": compiled,
         "summary": {
             "candidate_count": len(compiled),
             "adopted_count": adopted_count,
-            "core_question_answered": adopted_count > 0,
+            "analysis_angle_available": adopted_count > 0,
+            "core_question_answered": False,
             "decision_question": decision_question,
         },
-        "completion_status": "partial" if adopted_count else "core_question_unanswered",
+        "completion_status": "preliminary" if adopted_count else "core_question_unanswered",
     }
 
 
@@ -253,6 +254,7 @@ def main() -> None:
     parser.add_argument("--evidence-cards", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    guard_cli_output(parser, args.output, [args.candidates, args.evidence_cards])
     ledger = compile_angles(load_json(args.candidates), load_json(args.evidence_cards))
     write_json(args.output, ledger)
     print(json.dumps({"output": str(args.output.resolve()), "summary": ledger["summary"], "completion_status": ledger["completion_status"]}, ensure_ascii=False))
