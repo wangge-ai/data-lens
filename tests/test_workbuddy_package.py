@@ -5,15 +5,20 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from package_workbuddy_skill import package_workbuddy_skill  # noqa: E402
+from package_workbuddy_skill import _project_author, package_workbuddy_skill  # noqa: E402
 
 
 class WorkBuddyPackageTests(unittest.TestCase):
+    def test_project_author_fallback_supports_python_310(self) -> None:
+        with patch("package_workbuddy_skill.tomllib", None):
+            self.assertEqual(_project_author(ROOT), "Wangge")
+
     def test_generated_package_has_host_specific_frontmatter_and_portable_root(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             output = Path(temp_dir) / "data-lens-workbuddy.zip"

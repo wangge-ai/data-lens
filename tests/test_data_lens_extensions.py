@@ -3,10 +3,10 @@ from __future__ import annotations
 import base64
 import copy
 import json
+import re
 import subprocess
 import sys
 import tempfile
-import tomllib
 import unittest
 import zipfile
 from pathlib import Path
@@ -2510,10 +2510,12 @@ class TabularMethodTests(unittest.TestCase):
 class RepositoryTests(unittest.TestCase):
     def test_skill_version_has_one_consistent_repository_source(self) -> None:
         version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-        project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        project_text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        project_version = re.search(r'(?m)^version\s*=\s*["\']([^"\']+)["\']\s*$', project_text)
         registry = json.loads((ROOT / "methods" / "registry.json").read_text(encoding="utf-8"))
         self.assertEqual(SKILL_VERSION, version)
-        self.assertEqual(project["project"]["version"], version)
+        self.assertIsNotNone(project_version)
+        self.assertEqual(project_version.group(1), version)
         self.assertEqual(registry["skill_version"], version)
 
     def test_all_method_manifests_have_registered_versions(self) -> None:

@@ -3,9 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import tomllib
 import zipfile
 from pathlib import Path, PurePosixPath
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 compatibility
+    tomllib = None
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -66,11 +70,27 @@ def validate_workbuddy_skill_text(skill_text: str, expected_version: str) -> lis
 
 
 def _project_author(root: Path) -> str:
-    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
-    authors = project.get("authors", [])
-    if not authors or not authors[0].get("name"):
+    project_text = (root / "pyproject.toml").read_text(encoding="utf-8")
+    if tomllib is not None:
+        project = tomllib.loads(project_text)["project"]
+        authors = project.get("authors", [])
+        author = authors[0].get("name") if authors else None
+    else:
+        project_section = re.search(r"(?ms)^\[project\]\s*(.*?)(?=^\[|\Z)", project_text)
+        author_block = (
+            re.search(r"(?ms)^authors\s*=\s*\[(.*?)^\]\s*$", project_section.group(1))
+            if project_section
+            else None
+        )
+        author_match = (
+            re.search(r"\bname\s*=\s*([\"'])(.*?)\1", author_block.group(1))
+            if author_block
+            else None
+        )
+        author = author_match.group(2) if author_match else None
+    if not author:
         raise ValueError("pyproject.toml must declare a project author")
-    return str(authors[0]["name"])
+    return str(author)
 
 
 def package_workbuddy_skill(root: Path, output: Path, *, force: bool = False) -> dict[str, object]:
