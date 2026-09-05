@@ -73,8 +73,12 @@ def _test() -> int:
     if first:
         return first
     root = SCRIPT_DIR.parent
+    tests_dir = root / "tests"
+    if not tests_dir.is_dir():
+        print("Developer-only tests are not included in this distribution; core smoke suite passed.")
+        return 0
     completed = subprocess.run(
-        [sys.executable, "-m", "unittest", "discover", "-s", str(root / "tests"), "-p", "test_*.py"],
+        [sys.executable, "-m", "unittest", "discover", "-s", str(tests_dir), "-p", "test_*.py"],
         cwd=root,
         env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
         check=False,

@@ -2,11 +2,10 @@
 
 ## 0.9.0-dev.12 — 2026-09-05
 
+- Corrected WorkBuddy/CodeBuddy packaging against the current official Skill format: the archive now keeps the canonical `name`/`description` frontmatter unchanged, omits historical evaluation and repository-maintainer material, and verifies capability discovery plus the 115-item host-neutral core suite after clean extraction.
 - Reworked the public README into concise reader-facing Chinese and English guides, simplified HTML/Markdown report labels, removed internal trace sections from the reader Markdown, and added three previews built only from synthetic data.
 - Expanded the Chinese and English public guides into a complete product entry point covering host/Skill responsibilities, six distinctive capabilities, eight evidence-dependent analysis layers, deliverables, dependency behavior, installation, and direct invocation examples; simplified the Codex UI prompt to the same reader language.
 - Fixed the existing final-reader pass to read retained findings from the standard nested baseline file, and kept the single recommended action in its dedicated section instead of repeating it under every finding.
-- 修复 Python 3.10 下 WorkBuddy 打包兼容性：在标准库尚无 `tomllib` 时，仅对当前 `[project].authors` 元数据使用受限回退解析，并加入对应回归测试。
-
 - Repaired the two-case forward-test failures without adding a new gate: ordinary evidence-mode runs now reuse the existing E0 retention table for one advisory final-reader pass, and repeated-table guidance explicitly preserves reconciliation chains, later regime shifts, and decision-relevant data-quality exclusions.
 - Added deterministic `coverage_summary` output keyed by family and analysis unit so reader-facing row counts come from computed facts rather than prose-time inference; unlike analysis units are no longer compared as adjacent coverage snapshots.
 - Added a canonical run-manifest builder for reports produced outside the built-in renderer. It binds the existing six file groups, three status axes, methods and deliverables in the schema already consumed by `validate-manifest`.

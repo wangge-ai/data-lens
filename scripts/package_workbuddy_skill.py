@@ -6,28 +6,31 @@ import re
 import zipfile
 from pathlib import Path, PurePosixPath
 
-try:
-    import tomllib
-except ModuleNotFoundError:  # Python 3.10 compatibility
-    tomllib = None
-
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKBUDDY_FIELDS = {
-    "display_name": "Data Lens 深度分析",
-    "display_name_en": "Data Lens",
-    "description_zh": "从表格、文本、图片及混合资料中识别关键问题、跨来源关系、竞争解释和可验证行动。",
-    "description_en": (
-        "Evidence-grounded deep analysis across tables, text, images, and mixed corpora, "
-        "with competing explanations and testable actions."
-    ),
+PACKAGE_ROOT_FILES = {
+    Path("LICENSE"),
+    Path("NOTICE"),
+    Path("SKILL.md"),
+    Path("VERSION"),
+    Path("pyproject.toml"),
 }
-EXCLUDED_PARTS = {".git", ".github", "dist", "__pycache__", ".pytest_cache"}
-EVALUATOR_ONLY_FILES = {
+PACKAGE_ROOT_DIRS = {
+    "assets",
+    "contracts",
+    "fixtures",
+    "methods",
+    "references",
+    "scripts",
+}
+PACKAGE_EXTRA_FILES = {
+    Path("evals/README.md"),
+    Path("evals/semantic-conformance/probes-public.json"),
+}
+PACKAGE_EXCLUDED_FILES = {
     Path("evals/semantic-conformance/expectations-private.json"),
     Path("evals/semantic-conformance/responses-pass.json"),
     Path("evals/semantic-conformance/responses-fail.json"),
-    Path("tests/test_semantic_conformance.py"),
 }
 
 
@@ -40,71 +43,40 @@ def _split_skill(skill_text: str) -> tuple[list[str], str]:
     return parts[1].strip().splitlines(), parts[2].lstrip("\n")
 
 
-def build_workbuddy_skill_text(skill_text: str, version: str, author: str) -> str:
-    frontmatter, body = _split_skill(skill_text)
-    generated_names = {*WORKBUDDY_FIELDS, "version", "author"}
-    retained = [
-        line
-        for line in frontmatter
-        if not any(re.match(rf"^{re.escape(name)}\s*:", line) for name in generated_names)
-    ]
-    for name, value in WORKBUDDY_FIELDS.items():
-        retained.append(f"{name}: {json.dumps(value, ensure_ascii=False)}")
-    retained.append(f"version: {json.dumps(version)}")
-    retained.append(f"author: {json.dumps(author, ensure_ascii=False)}")
-    return "---\n" + "\n".join(retained) + "\n---\n\n" + body
+def build_workbuddy_skill_text(skill_text: str) -> str:
+    """Return the canonical Skill unchanged after checking its frontmatter."""
+    errors = validate_workbuddy_skill_text(skill_text)
+    if errors:
+        raise ValueError("; ".join(errors))
+    return skill_text
 
 
-def validate_workbuddy_skill_text(skill_text: str, expected_version: str) -> list[str]:
+def validate_workbuddy_skill_text(skill_text: str) -> list[str]:
     errors: list[str] = []
     frontmatter, _ = _split_skill(skill_text)
     joined = "\n".join(frontmatter)
-    required = ("name", "description", "description_zh", "description_en", "version", "author")
+    required = ("name", "description")
     for field in required:
         if not re.search(rf"(?m)^{field}:\s*\S.+$", joined):
-            errors.append(f"generated WorkBuddy frontmatter is missing {field}")
-    version = re.search(r"(?m)^version:\s*[\"']?([^\"'\s]+)[\"']?\s*$", joined)
-    if version and version.group(1) != expected_version:
-        errors.append("generated WorkBuddy version does not match VERSION")
+            errors.append(f"WorkBuddy frontmatter is missing {field}")
     return errors
 
 
-def _project_author(root: Path) -> str:
-    project_text = (root / "pyproject.toml").read_text(encoding="utf-8")
-    if tomllib is not None:
-        project = tomllib.loads(project_text)["project"]
-        authors = project.get("authors", [])
-        author = authors[0].get("name") if authors else None
-    else:
-        project_section = re.search(r"(?ms)^\[project\]\s*(.*?)(?=^\[|\Z)", project_text)
-        author_block = (
-            re.search(r"(?ms)^authors\s*=\s*\[(.*?)^\]\s*$", project_section.group(1))
-            if project_section
-            else None
-        )
-        author_match = (
-            re.search(r"\bname\s*=\s*([\"'])(.*?)\1", author_block.group(1))
-            if author_block
-            else None
-        )
-        author = author_match.group(2) if author_match else None
-    if not author:
-        raise ValueError("pyproject.toml must declare a project author")
-    return str(author)
+def _is_package_file(relative: Path) -> bool:
+    if relative in PACKAGE_EXCLUDED_FILES:
+        return False
+    if relative in PACKAGE_ROOT_FILES or relative in PACKAGE_EXTRA_FILES:
+        return True
+    return bool(relative.parts and relative.parts[0] in PACKAGE_ROOT_DIRS)
 
 
 def package_workbuddy_skill(root: Path, output: Path, *, force: bool = False) -> dict[str, object]:
     root = root.resolve()
     output = output.resolve()
     version = (root / "VERSION").read_text(encoding="utf-8").strip()
-    generated_skill = build_workbuddy_skill_text(
-        (root / "SKILL.md").read_text(encoding="utf-8"),
-        version,
-        _project_author(root),
+    packaged_skill = build_workbuddy_skill_text(
+        (root / "SKILL.md").read_text(encoding="utf-8")
     )
-    validation_errors = validate_workbuddy_skill_text(generated_skill, version)
-    if validation_errors:
-        raise ValueError("; ".join(validation_errors))
     if output.exists() and not force:
         raise FileExistsError(f"output already exists: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -115,8 +87,7 @@ def package_workbuddy_skill(root: Path, output: Path, *, force: bool = False) ->
         path
         for path in root.rglob("*")
         if path.is_file()
-        and not any(part in EXCLUDED_PARTS for part in path.relative_to(root).parts)
-        and path.relative_to(root) not in EVALUATOR_ONLY_FILES
+        and _is_package_file(path.relative_to(root))
         and path.suffix.lower() != ".pyc"
     ]
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -124,7 +95,7 @@ def package_workbuddy_skill(root: Path, output: Path, *, force: bool = False) ->
             relative = path.relative_to(root)
             archive_name = PurePosixPath("skills", "data-lens", *relative.parts).as_posix()
             if relative == Path("SKILL.md"):
-                archive.writestr(archive_name, generated_skill.encode("utf-8"))
+                archive.writestr(archive_name, packaged_skill.encode("utf-8"))
             else:
                 archive.write(path, archive_name)
 

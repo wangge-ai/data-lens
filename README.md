@@ -143,15 +143,20 @@ python scripts/data_lens.py test
 ```text
 Claude Code:         ~/.claude/skills/data-lens
 WorkBuddy/CodeBuddy: ~/.codebuddy/skills/data-lens
+项目内安装:            <项目>/.codebuddy/skills/data-lens
 ```
 
-WorkBuddy 图形界面导入前，在仓库根目录运行：
+WorkBuddy/CodeBuddy 官方格式只要求一份包含 `name`、`description` 和正文的 `SKILL.md`，并允许把脚本、参考资料和资产放在同一 Skill 目录。Data Lens 因此共用同一份分析指令，不为另一个宿主改写能力。
+
+通过 WorkBuddy 图形界面导入时，在仓库根目录运行：
 
 ```bash
 python scripts/package_workbuddy_skill.py
 ```
 
-然后导入 `dist/` 中生成的完整 ZIP。不要只复制 `SKILL.md`，否则脚本、方法说明和报告模板不会一起安装。
+然后导入 `dist/` 中生成的完整 ZIP。分发包只包含运行能力和公开自测材料；不要只复制 `SKILL.md`，否则执行脚本、方法说明和报告模板不会一起安装。结构检查只能证明包能读、脚本能启动，真实分析能力仍要在 WorkBuddy 里用一份新资料实际调用。
+
+官方说明：[WorkBuddy/CodeBuddy Skills](https://cloud.tencent.com/document/product/1831/134516)。
 
 ## 怎么使用
 
