@@ -1,0 +1,43 @@
+{
+  "cards": [
+    {
+      "evidence_id": "E-GEN-1",
+      "claim": "课程使用近期互动和销量筛选候选商品。",
+      "status": "verified",
+      "source": "source-generation.txt",
+      "source_sha256": "c96b16810fa1ec5aa2f29a75814ae33445df9659cb31c11d4d77d8fcbbc226f7",
+      "locator": {"type": "line_range", "start": 1, "end": 1, "quote": "近期可见互动与销量"},
+      "unit_id": "U-GEN-1",
+      "independence_group": "IG-COURSE-MAIN",
+      "family_id": "F-COURSE",
+      "lane": "content_text",
+      "directness": "source_stated"
+    },
+    {
+      "evidence_id": "E-GEN-2",
+      "claim": "课程把借鉴成功结构描述为降低探索成本，同时承认复制风险。",
+      "status": "verified",
+      "source": "source-generation.txt",
+      "source_sha256": "c96b16810fa1ec5aa2f29a75814ae33445df9659cb31c11d4d77d8fcbbc226f7",
+      "locator": {"type": "line_range", "start": 2, "end": 2, "quote": "降低早期探索成本"},
+      "unit_id": "U-GEN-2",
+      "independence_group": "IG-COURSE-MAIN",
+      "family_id": "F-COURSE",
+      "lane": "content_text",
+      "directness": "source_stated"
+    },
+    {
+      "evidence_id": "E-HOLD-1",
+      "claim": "留出材料称可见指标可能被主动改变，停止后排名与自然成交可能回落。",
+      "status": "verified",
+      "source": "source-holdout.txt",
+      "source_sha256": "db8d22652a05d7bf5a54804aed196ef7d5196d1af7ca87db5b8892c013190274",
+      "locator": {"type": "line_range", "start": 1, "end": 1, "quote": "停止这些动作后"},
+      "unit_id": "U-HOLD-1",
+      "independence_group": "IG-COURSE-HOLDOUT",
+      "family_id": "F-COURSE",
+      "lane": "content_text",
+      "directness": "source_stated"
+    }
+  ]
+}

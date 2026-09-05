@@ -1,7 +1,7 @@
 {
   "contract_version": "data-lens-method-manifest/1.0",
   "method_id": "data_lens.local_whisper_transcription",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "status": "experimental",
   "name": "本地 Whisper 有界转录",
   "question_types": ["transcription", "multimodal_preparation"],
@@ -11,10 +11,10 @@
   "assumptions": ["the local checkpoint is compatible with the installed Whisper runtime and selected audio clip"],
   "human_gates": ["confirm the bounded clip", "review speakers and transcript semantics before content claims"],
   "implementation": {"runtime": "python", "entrypoint": "scripts/transcribe_media.py", "network_policy": "deny", "optional_dependencies": ["FFmpeg", "openai-whisper", "local Whisper checkpoint"]},
-  "outputs": ["bounded mono audio clip", "raw Whisper JSON", "normalized timestamp transcript", "failure ledger"],
-  "diagnostics": ["clip bounds, extraction and transcription return codes, checkpoint hash, and failures"],
+  "outputs": ["bounded mono audio clip", "raw Whisper JSON", "normalized timestamp transcript", "quality-risk screen and playback-review sample", "failure ledger"],
+  "diagnostics": ["clip bounds, extraction and transcription return codes, checkpoint hash, package version, empty/repeated/low-logprob/high-no-speech candidates, and failures"],
   "evidence_requirements": ["source media hash", "clip start and end milliseconds", "local model checkpoint hash", "raw transcript hash"],
   "allowed_claims": ["the local checkpoint produced the recorded transcript candidate for the declared bounded clip"],
-  "forbidden_claims": ["the transcript is speaker-verified", "the transcript is semantically reviewed", "a model may be downloaded automatically", "a failed model may be retried automatically"],
-  "validation": {"status": "fixture_only", "fixtures": ["fixtures/video/ffprobe-ten-seconds.json", "fixtures/video/whisper-mixed-zh-en.json"]}
+  "forbidden_claims": ["the transcript is speaker-verified", "the transcript is semantically reviewed", "the adapter performs diarization", "a model may be downloaded automatically", "a failed model may be retried automatically"],
+  "validation": {"status": "regression_tested", "fixtures": ["fixtures/video/ffprobe-ten-seconds.json", "fixtures/video/whisper-mixed-zh-en.json", "fixtures/video/whisper-risk-signals.json"]}
 }

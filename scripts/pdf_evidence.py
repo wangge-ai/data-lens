@@ -9,11 +9,11 @@ from typing import Any, Callable
 
 from _common import file_sha256, write_json
 from multimodal_inventory import image_size
-from ocr_evidence import DEFAULT_PSMS, run_ocr
+from ocr_evidence import DEFAULT_PSMS, run_ocr, run_paddle_ocr
 
 
 METHOD_ID = "data_lens.pdf_page_ocr"
-METHOD_VERSION = "0.1.0"
+METHOD_VERSION = "0.2.0"
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 OcrFunction = Callable[..., dict[str, Any]]
 
@@ -93,11 +93,16 @@ def build_pdf_evidence(
     page_spec: str | None = None,
     dpi: int = 150,
     run_page_ocr: bool = True,
+    ocr_engine: str = "tesseract",
     languages: str = "chi_sim+eng",
     psms: tuple[int, ...] = DEFAULT_PSMS,
+    detection_model: Path | None = None,
+    recognition_model: Path | None = None,
+    orientation_model: Path | None = None,
     timeout: int = 30,
     runner: Runner = subprocess.run,
     ocr_function: OcrFunction = run_ocr,
+    paddle_ocr_function: OcrFunction = run_paddle_ocr,
     pdftoppm: str | None = None,
     pdfinfo: str | None = None,
 ) -> dict[str, Any]:
@@ -107,6 +112,12 @@ def build_pdf_evidence(
         raise ValueError("max_pages must be between 1 and 30")
     if dpi < 72 or dpi > 300:
         raise ValueError("dpi must be between 72 and 300")
+    if timeout < 1 or timeout > 600:
+        raise ValueError("timeout must be between 1 and 600 seconds per page stage")
+    if ocr_engine not in {"tesseract", "paddle"}:
+        raise ValueError("ocr_engine must be tesseract or paddle")
+    if run_page_ocr and ocr_engine == "paddle" and (detection_model is None or recognition_model is None):
+        raise ValueError("PaddleOCR requires explicit detection_model and recognition_model directories")
     if output_dir.exists() and any(output_dir.iterdir()):
         raise FileExistsError(f"output directory must be empty: {output_dir}")
     render_command = pdftoppm or shutil.which("pdftoppm")
@@ -192,7 +203,17 @@ def build_pdf_evidence(
         )
         if run_page_ocr:
             try:
-                ocr_payload = ocr_function(rendered, languages=languages, psms=psms, timeout=timeout)
+                if ocr_engine == "paddle":
+                    assert detection_model is not None and recognition_model is not None
+                    ocr_payload = paddle_ocr_function(
+                        rendered,
+                        detection_model=detection_model,
+                        recognition_model=recognition_model,
+                        orientation_model=orientation_model,
+                        timeout=timeout,
+                    )
+                else:
+                    ocr_payload = ocr_function(rendered, languages=languages, psms=psms, timeout=timeout)
                 ocr_path = output_dir / f"page-{page_number:04d}.ocr.json"
                 write_json(ocr_path, ocr_payload)
                 record.update(
@@ -222,6 +243,7 @@ def build_pdf_evidence(
         "page_count": page_count,
         "selected_pages": selected_pages,
         "selection_strategy": "explicit_pages" if page_spec else "evenly_spaced_bounded_sample",
+        "ocr_engine": ocr_engine if run_page_ocr else "not_requested",
         "max_pages": max_pages,
         "completion_status": completion,
         "semantic_review_status": "not_reviewed",
@@ -254,8 +276,12 @@ def main() -> None:
     parser.add_argument("--pages", dest="page_spec", help="Explicit 1-based pages, for example 1,3-5")
     parser.add_argument("--dpi", type=int, default=150)
     parser.add_argument("--skip-ocr", action="store_true")
+    parser.add_argument("--ocr-engine", choices=("tesseract", "paddle"), default="tesseract")
     parser.add_argument("--languages", default="chi_sim+eng")
     parser.add_argument("--psm", type=int, action="append", dest="psms")
+    parser.add_argument("--detection-model", type=Path, help="Explicit local PaddleOCR detection model directory")
+    parser.add_argument("--recognition-model", type=Path, help="Explicit local PaddleOCR recognition model directory")
+    parser.add_argument("--orientation-model", type=Path, help="Optional local PaddleOCR orientation model directory")
     parser.add_argument("--timeout", type=int, default=30)
     args = parser.parse_args()
     payload = build_pdf_evidence(
@@ -265,8 +291,12 @@ def main() -> None:
         page_spec=args.page_spec,
         dpi=args.dpi,
         run_page_ocr=not args.skip_ocr,
+        ocr_engine=args.ocr_engine,
         languages=args.languages,
         psms=tuple(args.psms or DEFAULT_PSMS),
+        detection_model=args.detection_model,
+        recognition_model=args.recognition_model,
+        orientation_model=args.orientation_model,
         timeout=args.timeout,
     )
     result = payload["results"][0]

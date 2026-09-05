@@ -9,11 +9,12 @@ import builtins
 from pathlib import Path
 from unittest.mock import patch
 
-from _common import file_sha256, load_json, parse_date_text, write_csv, write_json
+from _common import ExplicitInputAllowlist, InputNotAllowlistedError, file_sha256, load_json, parse_date_text, write_csv, write_json
 from apply_visual_reviews import apply as apply_visual_reviews
 from compute_verified_stats import compute, read_metrics
 from build_source_graph import build_graph
 from inventory_inputs import collect
+from probe_input_signatures import identify_signature, main as probe_signatures_main, probe_inventory
 from match_items_to_metrics import FIELDS, match
 from materialize_run_context import build_context
 from parse_tabular_exports import legacy_xls_cache_path, read_workbook
@@ -29,7 +30,7 @@ from header_mapping import build_header_mapping
 from validate_run_manifest import validate_manifest
 from plan_batches import build_run_state
 from prepare_mixed_run import prepare
-from render_report import build_manifest, render_html, render_markdown
+from render_report import build_manifest, package_gallery_assets, render_html, render_markdown
 from select_samples import build_sample
 from inspect_visual_assets import inspect as inspect_visuals
 from map_wechat_visuals import build_mapping as build_visual_mapping
@@ -207,6 +208,95 @@ class CorpusLensRegressionTests(unittest.TestCase):
         self.assertIsNone(parse_date_text("2025-04-31"))
         self.assertIsNone(parse_date_text("2025-99-99"))
 
+    def test_signature_probe_opens_only_explicit_inventory_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            allowed_dir = root / "allowed"
+            blocked_dir = root / "blocked"
+            allowed_dir.mkdir()
+            blocked_dir.mkdir()
+            allowed = allowed_dir / "allowed.xls"
+            blocked = blocked_dir / "blocked.xls"
+            allowed.write_bytes(bytes.fromhex("D0CF11E0A1B11AE1") + b"allowed")
+            blocked.write_bytes(bytes.fromhex("D0CF11E0A1B11AE1") + b"blocked")
+            inventory = {
+                "files": [
+                    {
+                        "source_container_id": "SRC-ALLOWED",
+                        "path": str(allowed),
+                        "extension": ".xls",
+                    }
+                ]
+            }
+            original_open = Path.open
+            opened: list[Path] = []
+
+            def tracked_open(path: Path, *args: object, **kwargs: object):
+                opened.append(path.resolve())
+                return original_open(path, *args, **kwargs)
+
+            with patch.object(Path, "open", tracked_open):
+                result = probe_inventory(inventory, 16)
+
+            self.assertEqual(result["input_scope"], "explicit_inventory_paths_only")
+            self.assertEqual(result["probe_version"], "1.1")
+            self.assertEqual(result["files"][0]["signature"], "ole_compound")
+            self.assertNotIn("header_hex", result["files"][0])
+            self.assertEqual(result["files"][0]["bytes_read"], 15)
+            self.assertIn(allowed.resolve(), opened)
+            self.assertNotIn(blocked.resolve(), opened)
+
+            scope = ExplicitInputAllowlist.from_inventory(inventory)
+            opened.clear()
+            with patch.object(Path, "open", tracked_open):
+                with self.assertRaises(InputNotAllowlistedError):
+                    scope.read_head(blocked, 16)
+            self.assertNotIn(blocked.resolve(), opened)
+
+    def test_signature_probe_recognizes_archive_boundaries_and_rejects_short_reads(self) -> None:
+        self.assertEqual(identify_signature(b"PK\x03\x04" + b"x" * 8), "zip_container")
+        self.assertEqual(identify_signature(b"PK\x05\x06" + b"x" * 8), "zip_container")
+        self.assertEqual(identify_signature(b"PK\x07\x08" + b"x" * 8), "zip_container")
+        self.assertEqual(identify_signature(b"Rar!\x1a\x07\x00" + b"x" * 5), "rar_archive")
+        self.assertEqual(identify_signature(b"Rar!\x1a\x07\x01\x00" + b"x" * 4), "rar_archive")
+        with self.assertRaisesRegex(ValueError, "between 12 and 4096"):
+            probe_inventory({"files": []}, 11)
+
+    def test_signature_probe_output_cannot_overwrite_inventory_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "source.xls"
+            inventory_path = root / "inventory.json"
+            source.write_bytes(bytes.fromhex("D0CF11E0A1B11AE1") + b"source")
+            inventory_path.write_text(
+                json.dumps(
+                    {
+                        "files": [
+                            {
+                                "source_container_id": "SRC-PROTECTED",
+                                "path": str(source),
+                                "extension": ".xls",
+                            }
+                        ]
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            before = file_sha256(source)
+            argv = [
+                "probe_input_signatures.py",
+                "--inventory",
+                str(inventory_path),
+                "--output",
+                str(source),
+            ]
+            with patch("sys.argv", argv):
+                with self.assertRaises(SystemExit) as raised:
+                    probe_signatures_main()
+            self.assertEqual(raised.exception.code, 2)
+            self.assertEqual(file_sha256(source), before)
+
     def test_header_mapping_is_versioned_and_fails_closed(self) -> None:
         fixture = load_json(SKILL_DIR / "fixtures" / "operational-workbook" / "profit-headers.json")
         aliases = {"date": ("日期",), "store": ("店铺",), "front_profit": ("前台利润",)}
@@ -349,7 +439,11 @@ class CorpusLensRegressionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             analysis_path = root / "analysis.json"
-            write_json(analysis_path, {"metrics": {"paid_amount": 99}})
+            write_json(analysis_path, {
+                "metrics": {"paid_amount": 99},
+                "subphase_summary": [{"label": "前半月", "paid_amount": 60}],
+                "change_point_candidates": [{"business_date": "2026-07-15", "change": -20}],
+            })
             workbook_path = root / "workbook.xlsx"
             workbook = Workbook()
             sheet = workbook.active
@@ -365,6 +459,8 @@ class CorpusLensRegressionTests(unittest.TestCase):
             result = validate_operational_outputs(workbook_path, analysis_path, None, None)
         self.assertFalse(result["valid"])
         self.assertIn("workbook_analysis_mismatch:paid_amount", result["errors"])
+        self.assertIn("workbook_omits_temporal_analysis:subphase_summary", result["errors"])
+        self.assertIn("workbook_omits_temporal_analysis:change_point_candidates", result["errors"])
 
     def test_ooxml_table_structure_rejects_blank_header_fixture(self) -> None:
         try:
@@ -1891,6 +1987,34 @@ class CorpusLensRegressionTests(unittest.TestCase):
             html_text = render_html(analysis, "body{}")
         self.assertIn('class="overview-visuals"', html_text)
         self.assertIn("一眼看清这次分析", html_text)
+
+    def test_mobile_report_navigation_stays_compact_and_touchable(self) -> None:
+        css = (SKILL_DIR / "assets" / "report-template" / "report.css").read_text(encoding="utf-8")
+        mobile = css.split("@media (max-width: 640px)", 1)[1].split("@media (prefers-reduced-motion", 1)[0]
+        self.assertIn(".toc { display: flex", mobile)
+        self.assertIn("overflow-x: auto", mobile)
+        self.assertIn(".toc-group, .toc-group ul { display: contents; }", mobile)
+        self.assertIn(".toc-group a { min-height: 44px", mobile)
+        self.assertNotIn("min-height: 34px", mobile)
+
+    def test_report_packager_copies_available_gallery_assets_without_overwrite(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            asset_root = root / "source"
+            output = root / "output"
+            source = asset_root / "assets" / "example.jpg"
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b"real-gallery-asset")
+            analysis = make_analysis(root / "evidence.md")
+            analysis["analysis_sections"] = [{"gallery": [{"src": "assets/example.jpg"}, {"src": "https://example.invalid/external.jpg"}]}]
+            first = package_gallery_assets(analysis, [asset_root], output)
+            self.assertEqual(first["copied"], ["assets/example.jpg"])
+            self.assertEqual((output / "assets" / "example.jpg").read_bytes(), b"real-gallery-asset")
+            (output / "assets" / "example.jpg").write_bytes(b"preserve-existing")
+            second = package_gallery_assets(analysis, [asset_root], output)
+            self.assertEqual(second["copied"], [])
+            self.assertEqual(second["available"], ["assets/example.jpg"])
+            self.assertEqual((output / "assets" / "example.jpg").read_bytes(), b"preserve-existing")
 
     def test_v23_output_pipeline_keeps_gate_status_and_overview_visible(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

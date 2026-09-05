@@ -1,0 +1,31 @@
+{
+  "case_id": "open-bandit-forward-001",
+  "host": {
+    "application": "WorkBuddy",
+    "application_version": "5.4.7",
+    "cli": "CodeBuddy Code",
+    "cli_version": "2.132.0",
+    "requested_model": "auto",
+    "resolved_model": "minimax-m3"
+  },
+  "execution": {
+    "skill_loaded": true,
+    "candidate_report_written": true,
+    "candidate_report_complete_enough_for_blind_content_review": true,
+    "forbidden_candidate_or_eval_read_detected": false,
+    "material_repository_clean_after_artifact_relocation": true,
+    "terminal_status": "failed_during_cli_output_finalization"
+  },
+  "failure": {
+    "message": "Failed to run function tools: TypeError: Cannot read properties of undefined (reading 'split')",
+    "observed_trigger": "After the report was written, the model emitted two PowerShell verification calls whose serialized argument used a malformed command key; the host adapter received no command value.",
+    "classification": "host_model_tool_call_serialization",
+    "data_lens_python_failure": false
+  },
+  "evidence": {
+    "logs_retained_privately": true,
+    "artifacts_retained_privately": true,
+    "private_paths_or_task_ids_published": false
+  },
+  "review_rule": "Score report content blindly; report host completion reliability separately and do not convert content quality into a successful runtime status."
+}

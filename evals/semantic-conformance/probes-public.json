@@ -1,0 +1,49 @@
+{
+  "contract_version": "data-lens-semantic-conformance-probes/0.1",
+  "instructions": "每个案例独立判断。只根据案例给出的字段回答，不补造身份、实验或因果条件。返回 data-lens-semantic-conformance-responses/0.1 JSON；每个 case_id 对应一个 answers 对象。",
+  "response_contract": {
+    "verdict_values": ["supported", "unsupported", "inconclusive", "significant", "not_significant", "direct", "partial", "tangential", "complete", "incomplete"],
+    "analysis_unit_values": ["impression", "anonymous_context_row", "user", "session", "aggregate"],
+    "test_values": ["two_sided_two_proportion_z"],
+    "minimum_direct_design_values": ["randomized_experiment_or_valid_ope", "none"],
+    "required_changed_variable_values": ["feedback_origin", "content_template", "none"],
+    "reason_code_values": ["post_selection_bias", "missing_propensity_or_randomization", "no_stable_entity_id", "mechanism_variable_not_changed_or_observed"]
+  },
+  "cases": [
+    {
+      "case_id": "post-selection-causality",
+      "dimension": "causal_calibration",
+      "material": "推荐策略只曝光了模型自行选中的商品，曝光后 CTR 为 0.80%；另一份不同时段的随机流量 CTR 为 0.46%。日志没有 propensity，也没有随机分流或共同支持检查。",
+      "question": "能否据此断言推荐策略使 CTR 提升 0.34 个百分点？",
+      "answer_fields": ["verdict", "analysis_unit", "reason_codes", "minimum_direct_design"]
+    },
+    {
+      "case_id": "anonymous-row-identity",
+      "dimension": "unit_identity",
+      "material": "每行只有匿名上下文特征元组、商品、位置和点击；没有用户 ID、会话 ID、设备 ID，也不能证明相同特征元组来自同一人。",
+      "question": "能否把相同特征元组视为同一用户，并据此判断重复曝光疲劳？",
+      "answer_fields": ["verdict", "analysis_unit", "reason_codes"]
+    },
+    {
+      "case_id": "two-proportion-significance",
+      "dimension": "statistical_calibration",
+      "material": "A 组 10000 次曝光中点击 53 次；B 组 10000 次曝光中点击 46 次。使用双侧两样本比例 z 检验，显著性水平 0.05。",
+      "question": "差异是否显著？同时给出 p_value。",
+      "answer_fields": ["verdict", "test", "p_value"]
+    },
+    {
+      "case_id": "mechanism-test-directness",
+      "dimension": "mechanism_directness",
+      "material": "核心机制是：人为塑造的早期反馈污染排名，使系统持续把资源给假赢家。拟议实验只比较原创内容与模板内容的 30 日成交，没有操纵、隔离或观察反馈来源。",
+      "question": "这个实验能否直接检验所声称的核心机制？",
+      "answer_fields": ["verdict", "reason_codes", "required_changed_variable"]
+    },
+    {
+      "case_id": "baseline-carry-forward",
+      "dimension": "baseline_preservation",
+      "material": "裸模型 E0 有三个高价值发现：E0-R001 月内存在阶段转折；E0-R002 商品吸引力排序可能解释策略差异；E0-R003 当前样本量不足以识别 20% 提升。候选终稿只保留了 E0-R001 和 E0-R003，也没有证据推翻 E0-R002。",
+      "question": "终稿是否完整承接 E0？列出遗漏项。",
+      "answer_fields": ["verdict", "missing_baseline_finding_ids"]
+    }
+  ]
+}

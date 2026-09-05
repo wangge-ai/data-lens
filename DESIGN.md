@@ -8,14 +8,13 @@ The normal flow is:
 
 ```text
 user question + supplied inputs
-  -> inventory and scope
-  -> deterministic facts and evidence units
-  -> decision-relevant problem map
-  -> optional cognitive engine
-  -> candidate angles/findings
-  -> adoption and human gates
-  -> reader artifact
-  -> independent validation + canonical run_manifest.json
+  -> host natural analysis E0
+  -> targeted high-impact verification
+  -> at most two E1 candidates around the largest residual
+  -> direct measurement where it can distinguish E0/E1
+  -> preserve E0 and synthesize supported increments
+  -> one lightweight final edit against the existing E0 retention table
+  -> escalate to inventory/contracts/ledgers only for scale, modality, advanced claims, formal evaluation, or release
 ```
 
 Request success, analysis completion, artifact health, and release eligibility are separate states. A confirmed analysis can coexist with a failed artifact; a repaired artifact is published as a new version derived from the locked deterministic analysis, not by rewriting history.

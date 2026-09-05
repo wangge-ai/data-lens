@@ -1,0 +1,24 @@
+{
+  "contract_version": "data-lens-hypothesis-experiment/0.1",
+  "experiment_id": "WAVE-GRAIN-1",
+  "decision_question": "指定日内时点的反弹预测是否命中？",
+  "mode": "atomic_claims",
+  "data_source": {
+    "path": "wave-granularity.csv",
+    "format": "csv",
+    "granularity": "daily",
+    "time_field": "date"
+  },
+  "declared_dimensions": ["time"],
+  "components": [
+    {
+      "component_id": "TIME-1400",
+      "dimension": "time",
+      "statement": "2025-06-06 14:00 左右出现 5 分钟级别反弹",
+      "required_granularity": "intraday_5m",
+      "evaluation_window": {"start": "2025-06-06", "end": "2025-06-06"},
+      "measurement": {"kind": "max", "field": "close"},
+      "expectation": {"operator": "gt", "value": 3380}
+    }
+  ]
+}

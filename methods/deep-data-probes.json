@@ -1,0 +1,61 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.deep_data_probes",
+  "version": "0.2.0",
+  "status": "experimental",
+  "name": "深度数据诊断探针",
+  "purpose": "Run bounded deterministic contrasts for pre/post comparison, subgroup heterogeneity, and future-safe rolling-origin prediction so semantic explanations can be confronted with measured differences.",
+  "question_types": ["temporal_comparison", "heterogeneity", "quasi_experimental_probe", "prediction_validation"],
+  "accepted_units": ["observation", "time_point", "cohort", "comparison_group", "subgroup"],
+  "input_shapes": ["CSV or JSON rows", "hypothesis experiment specification"],
+  "eligibility_checks": [
+    "the analysis unit, outcome, time window, and group definitions are explicit",
+    "required cells or rolling history contain usable numeric observations",
+    "the result will be interpreted within the declared design rather than by method name",
+    "an adoption-grade execution uses a hashed file input and explicit data evidence references"
+  ],
+  "assumptions": [
+    "difference-in-differences is only a contrast until parallel trends and other identifying assumptions are supported",
+    "subgroup differences are descriptive heterogeneity candidates unless treatment effects are identified",
+    "rolling-origin predictions use no observation after the prediction origin"
+  ],
+  "human_gates": ["review causal assumptions before interpreting a quasi-experimental contrast as an intervention effect"],
+  "implementation": {
+    "runtime": "python",
+    "entrypoint": "scripts/run_hypothesis_experiment.py",
+    "network_policy": "deny",
+    "optional_dependencies": []
+  },
+  "outputs": [
+    "difference-in-differences contrast and four cell counts",
+    "subgroup-specific contrasts, effect spread, and opposite-direction flag",
+    "rolling-origin naive MAE with origin-target prediction records",
+    "rejection of overlapping pre/post periods and duplicate timestamps in a single-series forecast",
+    "explicit claim boundary for each probe",
+    "execution bindings for outcome field, forecast semantics, and treatment/control group mapping"
+  ],
+  "diagnostics": [
+    "missing pre/post or treated/control cell",
+    "fewer than two comparable subgroups",
+    "insufficient rolling history",
+    "missing numeric outcome",
+    "future-leakage protection recorded per rolling origin",
+    "invalid pre/post ordering or mixed series at the same timestamp"
+  ],
+  "evidence_requirements": ["locatable source rows", "declared evaluation window", "usable outcome values", "group and period definitions when applicable"],
+  "allowed_claims": [
+    "the declared pre/post group contrast has a measured value",
+    "the observed group difference varies across declared subgroups",
+    "the naive forecast has the reported out-of-sample error over the tested origins"
+  ],
+  "forbidden_claims": [
+    "a difference-in-differences calculation alone proves causality",
+    "subgroup contrast proves individualized treatment effect",
+    "in-sample fit or randomly shuffled time rows prove forecast performance",
+    "one successful probe validates a full mechanism"
+  ],
+  "validation": {
+    "status": "regression_tested",
+    "fixtures": ["fixtures/hypothesis-experiment"]
+  }
+}

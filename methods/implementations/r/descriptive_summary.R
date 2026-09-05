@@ -5,7 +5,7 @@ if (length(args) != 2) {
 
 input_path <- args[[1]]
 output_path <- args[[2]]
-data <- read.csv(input_path, check.names = FALSE, stringsAsFactors = FALSE)
+data <- read.csv(input_path, check.names = FALSE, stringsAsFactors = FALSE, fileEncoding = "UTF-8")
 
 json_escape <- function(value) {
   value <- gsub("\\\\", "\\\\\\\\", as.character(value))
@@ -37,7 +37,7 @@ for (name in numeric_names) {
 payload <- paste0(
   '{"contract_version":"data-lens-method-result/1.0",',
   '"method_id":"data_lens.r_descriptive_summary",',
-  '"method_version":"0.1.0",',
+  '"method_version":"0.1.1",',
   '"status":"', if (length(numeric_names)) 'succeeded' else 'ineligible', '",',
   '"results":[', paste(results, collapse = ","), '],',
   '"diagnostics":[{"numeric_column_count":', length(numeric_names), '}],',

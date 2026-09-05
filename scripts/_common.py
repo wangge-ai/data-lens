@@ -18,6 +18,45 @@ SKILL_NAME = "data-lens"
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 SKILL_VERSION = (SKILL_ROOT / "VERSION").read_text(encoding="utf-8").strip()
 
+_EXPLICIT_CAUSAL_WORDING = re.compile(
+    r"(?:导致|造成|引发|促使|使得|致使|(?:令|让|使).{0,24}(?:更高|更低|更好|更差|"
+    r"提高|提升|降低|下降|增加|减少|改善|恶化)|驱动|促进|抑制|决定了?|"
+    r"带来|带动|拉高|拉低|有助于|助推|推动|催生|诱发|加剧|缓解|归因于|源于|源自|取决于|"
+    r"(?:提升|提高|降低|增加|减少|改善|恶化)(?:了)?(?=[^\d\s%％，。；])|"
+    r"\b(?:causes?|caused|causing|leads?\s+to|led\s+to|results?\s+in|resulted\s+in|"
+    r"drives?|drove|effect\s+of|impact\s+of)\b)",
+    re.IGNORECASE,
+)
+_EXPLICIT_PREDICTION_WORDING = re.compile(
+    r"(?:(?:未来|下一(?:期|次|天|周|月|季|年|篇)|明天|明日|后续).{0,32}"
+    r"(?:将|会|预计|预期|可望|有望|达到|升至|降至)|"
+    r"(?:预计|预测|预期|将会|将达到|会达到|可望|有望).{0,32}(?:达到|升至|降至|为|增长|下降)|"
+    r"(?:未来|下(?:期|次|天|周|月|季|年)|下一(?:期|次|天|周|月|季|年|篇)|明天|明日|后续).{0,32}"
+    r"(?:\d+(?:\.\d+)?|盈利|亏损|增长|下降|上涨|下跌|高于|低于)|"
+    r"\b(?:will|forecast(?:s|ed)?|is\s+expected\s+to|is\s+projected\s+to|next\s+period)\b)",
+    re.IGNORECASE,
+)
+_EXPLICIT_ACTION_DIRECTIVE = re.compile(
+    r"(?:(?:应当|应该|必须|务必|立即|马上|建议|宜|不妨|需要).{0,36}"
+    r"(?:采用|执行|实施|停止|禁止|优先|设为|定为|改为|调整|投入|购买|上线|下线|推广|放弃|保留|扩大|缩小)|"
+    r"(?:设为|定为).{0,16}(?:固定|默认|统一).{0,8}(?:规则|方案|策略)|"
+    r"(?:以后|今后|后续|全部|全都|统一|固定|默认).{0,28}"
+    r"(?:使用|采用|执行|实施|设为|定为|改为|上线|推广|停止|禁止|优先)|"
+    r"(?:使用|采用|执行|实施|设为|定为|改为).{0,20}(?:统一|固定|默认)|"
+    r"\b(?:should|must|recommend(?:s|ed)?|immediately|adopt|deploy|stop|ban)\b)",
+    re.IGNORECASE,
+)
+_HYPOTHESIS_QUALIFIER = re.compile(
+    r"(?:可能|或许|也许|假设|推测|候选机制|待检验|尚待验证|"
+    r"\b(?:may|might|could|hypothesis|hypothesized|tentative|to\s+be\s+tested)\b)",
+    re.IGNORECASE,
+)
+_NONCAUSAL_RELATION_WORDING = re.compile(
+    r"(?:相关|关联|伴随|共变|共同变化|同步变化|反向变化|同时出现|差异|"
+    r"\b(?:correlat(?:e|ed|es|ion)|associat(?:e|ed|es|ion)|co-?vary|difference)\b)",
+    re.IGNORECASE,
+)
+
 if not re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?", SKILL_VERSION):
     raise RuntimeError("VERSION must contain one semantic version")
 
@@ -26,6 +65,26 @@ def normalize_title(value: Any) -> str:
     text = "" if value is None else str(value)
     text = unicodedata.normalize("NFKC", text).lower()
     return re.sub(r"[^a-z0-9\u4e00-\u9fff]+", "", text)
+
+
+def has_explicit_causal_wording(value: Any) -> bool:
+    return bool(_EXPLICIT_CAUSAL_WORDING.search(str(value or "")))
+
+
+def has_hypothesis_qualifier(value: Any) -> bool:
+    return bool(_HYPOTHESIS_QUALIFIER.search(str(value or "")))
+
+
+def has_explicit_prediction_wording(value: Any) -> bool:
+    return bool(_EXPLICIT_PREDICTION_WORDING.search(str(value or "")))
+
+
+def has_explicit_action_directive(value: Any) -> bool:
+    return bool(_EXPLICIT_ACTION_DIRECTIVE.search(str(value or "")))
+
+
+def has_noncausal_relation_wording(value: Any) -> bool:
+    return bool(_NONCAUSAL_RELATION_WORDING.search(str(value or "")))
 
 
 def parse_publish_stamp(name: str) -> tuple[str | None, str]:
@@ -93,6 +152,66 @@ def guard_cli_output(parser: Any, output: Path, sources: Iterable[Path]) -> None
         parser.error(str(exc))
 
 
+class InputNotAllowlistedError(ValueError):
+    """Raised before a source is opened when it is outside the explicit input list."""
+
+
+class ExplicitInputAllowlist:
+    """Exact source-file scope for header, signature, MIME, and parser probes.
+
+    Directory enumeration belongs to the inventory step. Later probes consume the
+    inventory's concrete file paths through this object instead of searching a
+    parent directory again.
+    """
+
+    def __init__(self, paths: Iterable[Path]) -> None:
+        resolved: set[Path] = set()
+        for path in paths:
+            candidate = Path(path).resolve(strict=True)
+            if not candidate.is_file():
+                raise FileNotFoundError(f"allowlisted input is not a file: {candidate}")
+            resolved.add(candidate)
+        self._paths = frozenset(resolved)
+
+    @classmethod
+    def from_inventory(cls, inventory: dict[str, Any]) -> "ExplicitInputAllowlist":
+        records = inventory.get("files")
+        if not isinstance(records, list):
+            raise ValueError("inventory.files must be a list")
+        paths: list[Path] = []
+        for index, record in enumerate(records):
+            if not isinstance(record, dict) or not str(record.get("path") or "").strip():
+                raise ValueError(f"inventory.files[{index}].path is required")
+            paths.append(Path(str(record["path"])))
+        return cls(paths)
+
+    @property
+    def paths(self) -> tuple[Path, ...]:
+        return tuple(sorted(self._paths, key=lambda path: str(path).lower()))
+
+    def require(self, path: Path) -> Path:
+        candidate = Path(path).resolve(strict=True)
+        if candidate not in self._paths:
+            raise InputNotAllowlistedError(f"source input is not explicitly allowlisted: {candidate}")
+        return candidate
+
+    @contextmanager
+    def open_binary(self, path: Path) -> Iterator[Any]:
+        candidate = self.require(path)
+        with candidate.open("rb") as handle:
+            yield handle
+
+    def read_head(self, path: Path, byte_count: int = 32) -> bytes:
+        if not 1 <= byte_count <= 4096:
+            raise ValueError("byte_count must be between 1 and 4096")
+        with self.open_binary(path) as handle:
+            return handle.read(byte_count)
+
+    def subprocess_path(self, path: Path) -> str:
+        """Return a checked concrete path for Excel, ffprobe, or another local tool."""
+        return str(self.require(path))
+
+
 @contextmanager
 def atomic_output_path(path: Path) -> Iterator[Path]:
     """Yield a same-directory temporary path and atomically publish it on success."""
@@ -111,6 +230,25 @@ def atomic_output_path(path: Path) -> Iterator[Path]:
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+@contextmanager
+def exclusive_output_reservation(path: Path, *, label: str = "output") -> Iterator[None]:
+    """Reserve a new output name so concurrent or repeated runs cannot overwrite it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError as exc:
+        raise FileExistsError(f"{label} already exists or is reserved by another run: {path.resolve()}") from exc
+    os.close(descriptor)
+    try:
+        yield
+    except BaseException:
+        try:
+            if path.is_file() and path.stat().st_size == 0:
+                path.unlink()
+        finally:
+            raise
 
 
 def write_json(path: Path, payload: Any) -> None:

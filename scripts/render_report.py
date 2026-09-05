@@ -4,12 +4,73 @@ import argparse
 import html
 import json
 import re
+import shutil
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from baseline_preservation import assess_baseline_preservation
 from _common import SKILL_NAME, SKILL_VERSION, file_sha256, guard_cli_output, load_json, write_json
 from validate_deep_analysis import validate_analysis
+
+
+def apply_increment_policy(
+    data: dict[str, Any], assessment: dict[str, Any] | None
+) -> dict[str, Any]:
+    if assessment is None:
+        return data
+    if assessment.get("contract_version") not in {
+        "data-lens-incremental-discovery-assessment/0.2",
+        "data-lens-incremental-discovery-assessment/0.3",
+    }:
+        raise ValueError("unsupported incremental discovery assessment")
+    decision_question = str(
+        (data.get("analysis_intent") or {}).get("decision_question")
+        or (data.get("scope") or {}).get("decision_question")
+        or ""
+    ).strip()
+    if str(assessment.get("decision_question") or "").strip() != decision_question:
+        raise ValueError("incremental assessment decision_question differs from deep_analysis")
+    summary = assessment.get("summary") or {}
+    mode = str(summary.get("final_report_mode") or "")
+    if mode == "e0_plus_validated_increment":
+        allowed = set(map(str, summary.get("validated_increment_ids") or []))
+    elif mode == "e0_plus_labeled_unvalidated_hypothesis":
+        allowed = set(map(str, summary.get("testable_increment_ids") or []))
+    elif mode == "e0_only":
+        allowed = set()
+    else:
+        raise ValueError("incremental assessment has an invalid final_report_mode")
+    disallowed = sorted({
+        str(item.get("increment_candidate_id"))
+        for item in data.get("findings", [])
+        if item.get("increment_candidate_id")
+        and str(item.get("increment_candidate_id")) not in allowed
+    })
+    if disallowed:
+        raise ValueError(
+            "deep_analysis includes increment candidates excluded by assessment:"
+            + ",".join(disallowed)
+        )
+    retention = assess_baseline_preservation(
+        data,
+        assessment.get("baseline_snapshot") or {},
+    )
+    if not retention["complete"]:
+        raise ValueError(
+            "final report silently drops or mis-maps retained E0 findings:"
+            + ";".join(retention["errors"])
+        )
+    result = deepcopy(data)
+    result["_incremental_discovery"] = {
+        "final_report_mode": mode,
+        "overall_result": summary.get("overall_result"),
+        "reader_notice": summary.get("reader_notice"),
+        "allowed_candidate_ids": sorted(allowed),
+        "baseline_preservation": retention,
+    }
+    return result
 
 
 def esc(value: Any) -> str:
@@ -602,8 +663,60 @@ def record(path: Path) -> dict[str, Any]:
     return {"path": str(path.resolve()), "sha256": file_sha256(path), "size_bytes": path.stat().st_size}
 
 
+def package_gallery_assets(
+    data: dict[str, Any], asset_roots: list[Path], output_dir: Path
+) -> dict[str, list[str]]:
+    relative_sources = sorted({
+        str(item.get("src") or "").strip()
+        for section in data.get("analysis_sections", [])
+        for item in section.get("gallery", [])
+        if str(item.get("src") or "").strip()
+    })
+    result: dict[str, list[str]] = {"available": [], "copied": [], "missing": [], "skipped": []}
+    for source in relative_sources:
+        if re.match(r"^[a-z][a-z0-9+.-]*:", source, flags=re.I):
+            result["skipped"].append(source)
+            continue
+        relative = Path(source)
+        if relative.is_absolute() or ".." in relative.parts:
+            result["skipped"].append(source)
+            continue
+        destination = output_dir / relative
+        if destination.is_file():
+            result["available"].append(source)
+            continue
+        candidate = next(
+            (root / relative for root in asset_roots if (root / relative).is_file()),
+            None,
+        )
+        if candidate is None:
+            result["missing"].append(source)
+            continue
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(candidate, destination)
+        result["copied"].append(source)
+        result["available"].append(source)
+    return result
+
+
+def packaged_gallery_records(data: dict[str, Any], output_dir: Path) -> list[dict[str, Any]]:
+    records = []
+    for section in data.get("analysis_sections", []):
+        for item in section.get("gallery", []):
+            source = str(item.get("src") or "").strip()
+            if not source or re.match(r"^[a-z][a-z0-9+.-]*:", source, flags=re.I):
+                continue
+            relative = Path(source)
+            if relative.is_absolute() or ".." in relative.parts:
+                continue
+            path = output_dir / relative
+            if path.is_file():
+                records.append(record(path))
+    return records
+
+
 def build_manifest(data: dict[str, Any], analysis_path: Path, validation_path: Path, context_path: Path, context: dict[str, Any], output_dir: Path) -> dict[str, Any]:
-    outputs = [record(output_dir / "report.html"), record(output_dir / "report.md")]
+    outputs = [record(output_dir / "report.html"), record(output_dir / "report.md"), *packaged_gallery_records(data, output_dir)]
     evidence_positions = [{"evidence_id": item.get("id"), "source_path": item.get("source_path"), "locator": item.get("locator")} for item in data.get("evidence", [])]
     pipeline_steps = list(dict.fromkeys([*context.get("pipeline_steps", ["materialize_run_context.py"]), "validate_deep_analysis.py", "render_report.py"]))
     contract_version = str(data.get("contract_version") or "")
@@ -617,11 +730,24 @@ def main() -> None:
     parser.add_argument("--run-context", type=Path, required=True)
     parser.add_argument("--analysis-validation", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--increment-assessment", type=Path)
+    parser.add_argument("--asset-root", type=Path, action="append", default=[], help="Copy available relative gallery assets from this root into the output package; repeat as needed.")
     args = parser.parse_args()
-    sources = [args.deep_analysis, args.run_context, args.analysis_validation]
+    sources = [
+        args.deep_analysis,
+        args.run_context,
+        args.analysis_validation,
+        *([args.increment_assessment] if args.increment_assessment else []),
+    ]
     for name in ("report.html", "report.md", "run_manifest.json"):
         guard_cli_output(parser, args.output_dir / name, sources)
     data = load_json(args.deep_analysis)
+    if any(item.get("increment_candidate_id") for item in data.get("findings", [])) and not args.increment_assessment:
+        raise ValueError("--increment-assessment is required when deep_analysis contains E1 findings")
+    data = apply_increment_policy(
+        data,
+        load_json(args.increment_assessment) if args.increment_assessment else None,
+    )
     context = load_json(args.run_context)
     validation = load_json(args.analysis_validation)
     if not validation.get("valid"):
@@ -633,11 +759,12 @@ def main() -> None:
     css_path = Path(__file__).resolve().parent.parent / "assets" / "report-template" / "report.css"
     css = css_path.read_text(encoding="utf-8")
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    asset_packaging = package_gallery_assets(data, args.asset_root, args.output_dir)
     (args.output_dir / "report.html").write_text(render_html(data, css, context), encoding="utf-8")
     (args.output_dir / "report.md").write_text(render_markdown(data), encoding="utf-8")
     manifest = build_manifest(data, args.deep_analysis, args.analysis_validation, args.run_context, context, args.output_dir)
     write_json(args.output_dir / "run_manifest.json", manifest)
-    print(json.dumps({"output_dir": str(args.output_dir.resolve()), "rendered_counts": {key: len(data.get(key, [])) for key in ("executive_summary", "findings", "comparisons", "analysis_sections", "recommendations", "experiments", "evidence_coverage", "evidence")}}, ensure_ascii=False))
+    print(json.dumps({"output_dir": str(args.output_dir.resolve()), "rendered_counts": {key: len(data.get(key, [])) for key in ("executive_summary", "findings", "comparisons", "analysis_sections", "recommendations", "experiments", "evidence_coverage", "evidence")}, "asset_packaging": asset_packaging}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

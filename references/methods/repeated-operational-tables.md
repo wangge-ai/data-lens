@@ -69,10 +69,12 @@
   "inventory_snapshot": [],
   "fulfillment_daily": [],
   "coverage": [
-    {"collection_date": "2026-07-01", "family": "orders", "file_count": 1, "row_count": 200, "schema_fingerprint": "..."}
+    {"collection_date": "2026-07-01", "family": "orders", "analysis_unit": "order_row", "file_count": 1, "row_count": 200, "schema_fingerprint": "..."}
   ]
 }
 ```
+
+每一种会写进报告的覆盖数量都要有独立 `coverage` 行和明确 `analysis_unit`。同一工作簿家族若同时包含一级类目行与叶子类目行，分别登记，不能用一个总数代替，也不能在写作时从文件数或展示表猜测。`analyze-operational` 会把这些数原样规范化到 `operational_analysis.json.coverage_summary`；正文只能从这里复制覆盖数字。所需分析单位未登记时，先补事实层再写报告，或省略该数字。
 
 `platform_daily` 必须在 `business_date × platform` 上唯一。重复主键直接让质量门失败，不能静默相加。
 
@@ -113,6 +115,12 @@
 8. 退款、推广、库存、履约和覆盖异常；
 9. 验证动作。
 
+月度、周度或批次汇总前，必须先检查最细可信业务时间粒度上的阶段与转折。至少比较期初/期中/期末或前半段/后半段，并检查确定性 `change_point_candidates`；如果转折改变了驱动排序、使月度方向反转，或改变管理动作的时点，就把它作为必须保留的时间路径发现。后续店铺、商品和机制拆分只能解释或修正该发现，不能因为新增了更复杂的横截面结论而将其删除。
+
+形成机制解释前，把普通分析已经确认且会改变判断的关系写入现有 E0 `retained_findings`，至少检查三类内容：可对账的金额/数量链及其组成分区、主要阶段与较晚发生的反转或第二次换挡、会禁止某项指标使用的数据质量异常。终稿草稿后运行一次 `prepare-final-review`，只用同一张 E0 保留表恢复遗漏，并从 `deterministic_coverage_claims` 复制覆盖数字；这是一轮写作交接，不是第二次分析或新门禁。
+
+转折窗口不得在看到结果后任意挑选。优先使用业务预定义窗口、自然周、活动前后、月末固定窗口或确定性变化点候选，并同时报告转折前后分母、覆盖和反例。没有足够日期粒度时明确标记 `unverifiable`，不要只给月度总量后声称完成了动态分析。
+
 脚本把突变标记为 `change_point_candidate_not_cause`，意思是“变化点候选，不代表原因”。没有独立证据时，不能把它改写成活动效果、代理问题或平台变化导致。
 
 聚合表只能支持记录到的经营事实，不能据此推断运营人员心态、组织能力、平台政策变化或经营策略。原因判断至少需要与同一对象和时间轴匹配的规则、活动、决策日志、执行记录或实体映射；否则保留多个候选并给出核查顺序。
@@ -141,3 +149,5 @@ Excel 使用表格对象或动态范围，冻结表头、启用筛选，并让�
 页面测试至少覆盖不大于 400 像素的手机宽度和不小于 1200 像素的桌面宽度，结果保存到 `viewport_qa.json`，然后运行 `scripts/validate_operational_outputs.py`。
 
 HTML 展示决策摘要、平台切换、少量诊断图、明确边界和优先动作。它不是第二份 Excel，也不能隐藏审计 Excel 结果所需的重要证据。
+
+如果没有使用内置 `render` 生成整套交付物，仍用 `build-manifest` 从实际来源、确定性产物、实现、账本和交付物生成标准 `run_manifest.json`，再交给现有 `validate-manifest`。不得手写另一种字段结构，也不得删减现有验证器要求的三状态轴或文件组。

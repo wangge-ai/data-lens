@@ -1,0 +1,96 @@
+{
+  "contract_version": "data-lens-deep-analysis-question/0.1",
+  "decision_question": "降低推广占比是否会提高前台利润，哪些店铺反应不同？",
+  "objective": "estimate_effect",
+  "scope": {
+    "population": "2024年持续经营店铺",
+    "analysis_unit": "店铺-月",
+    "time_field": "month",
+    "time_granularity": "monthly",
+    "segments": ["店铺类型", "品类"],
+    "outcome": {
+      "name": "前台利润",
+      "field": "front_profit",
+      "unit": "元",
+      "better_direction": "higher"
+    }
+  },
+  "data_readiness": {
+    "evidence_refs": ["EV-PROFIT-01"],
+    "outcome_observed": true,
+    "exposure_observed": true,
+    "stable_measurement": "supported",
+    "temporal_order_known": true,
+    "repeated_units": true,
+    "pre_post_periods": true,
+    "comparison_groups": true,
+    "missingness_assessed": true
+  },
+  "data_generating_process": {
+    "observed_drivers": ["推广营业额占比", "前台利润"],
+    "unobserved_drivers": ["同期活动与预算调整"],
+    "selection_process": "运营人员根据店铺表现非随机调整推广预算",
+    "mechanism_edges": [
+      {
+        "source": "推广营业额占比",
+        "target": "前台利润",
+        "relation": "associated_with",
+        "evidence_refs": ["EV-PROFIT-01"]
+      }
+    ]
+  },
+  "candidate_mechanisms": [
+    {
+      "mechanism_id": "M-PROMO",
+      "claim": "推广结构变化通过利润核算口径影响前台利润",
+      "divergent_prediction": "降低推广占比的共同店铺利润改善幅度高于未降低组"
+    }
+  ],
+  "heterogeneity_design": {
+    "target": "不同店铺类型中的推广策略利润差异",
+    "segment_field": "店铺类型",
+    "group_field": "promo_policy_arm",
+    "group_a": "reduce_5pp",
+    "group_b": "unchanged",
+    "minimum_group_n": 2,
+    "effect_scope": "descriptive",
+    "design_evidence_refs": []
+  },
+  "mechanism_design": {
+    "target": "推广结构变化是否产生不同于自然波动的利润路径",
+    "mechanism_id": "M-PROMO",
+    "mechanism_variable": "promo_share",
+    "changed_or_isolated_variable": "promo_share",
+    "baseline_hypothesis_id": "E0-NATURAL",
+    "candidate_hypothesis_id": "E1-PROMO",
+    "required_granularity": "monthly",
+    "evaluation_window": {"start": "2024-01-01", "end": "2024-12-31"},
+    "measurement": {"kind": "group_mean_difference", "field": "front_profit", "group_field": "promo_policy_arm", "group_a": "reduce_5pp", "group_b": "unchanged"},
+    "hypothesis_predictions": {
+      "E0-NATURAL": {"operator": "abs_lte", "value": 500},
+      "E1-PROMO": {"operator": "gt", "value": 500}
+    }
+  },
+  "causal_design": {
+    "intervention": "将推广营业额占比降低5个百分点",
+    "comparator": "推广占比保持不变",
+    "group_field": "promo_policy_arm",
+    "intervention_value": "reduce_5pp",
+    "comparator_value": "unchanged",
+    "assignment_mechanism": "observational",
+    "time_zero": "首次达到5个百分点差异的月份",
+    "followup_end": "干预后第二个月",
+    "estimand": "持续经营店铺两个月前台利润平均处理效应",
+    "estimator": "difference_in_differences",
+    "identification_strategy": "difference_in_differences",
+    "positivity": "uncertain",
+    "consistency": "supported",
+    "confounder_review_status": "incomplete",
+    "known_confounders": [
+      {"name": "同期活动与预算调整", "status": "unmeasured"}
+    ],
+    "assumptions": [
+      {"name": "干预前平行趋势", "status": "untested", "evidence_refs": ["EV-PROFIT-01"]}
+    ]
+  }
+}

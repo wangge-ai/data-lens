@@ -143,7 +143,9 @@ PDF 是来源容器，其中 66 个项目可能是 66 个分析单位；30 张�
 - 普通采用发现通过范围、合同、证据、反例与决策关联，可以作为有边界的描述；
 - 锚点发现还必须有真实覆盖、竞争解释和至少一项支持性稳健性检查；
 - `pattern`、`relationship` 和 `mechanism_hypothesis` 必须保存至少一个竞争解释；
-- V1 不采用因果层级候选；机制假设不得写成因果证明；
+- `prediction`、`causal_effect` 和 `decision_rule` 必须由同一决策问题的深度分析计划授权，并保存目标、方法、关键假设、匹配层级的验证类型、支持状态和 `analysis_result` 结果证据；计划就绪不等于结果成立；
+- 高级发现进入 `deep_analysis.json` 时仍使用稳定的 `classification=inference`，其精确层级和设计边界保存在发现账本的 `claim_level` 与 `claim_design` 中；
+- 机制假设不得写成因果证明，样本内拟合不得写成预测能力，平均效果不得自动写成最优动作；
 - 角度采用不能替代发现采用，也不能把核心问题标成已回答。
 
 `finding_adoption` 保存账本路径、哈希和全部锚点 ID。验证器重新验证账本、核对决策问题、确保报告没有遗漏已采用发现，并检查锚点 ID 完全一致。`final` 还要求路线必答项没有 `evidence_missing`。

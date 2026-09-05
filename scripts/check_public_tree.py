@@ -14,6 +14,7 @@ SECRET_PATTERNS = [
 ]
 PRIVATE_PATH_PATTERNS = [
     re.compile(r"(?i)\b[A-Z]:\\Users\\(?!Alice\\secret\.txt)"),
+    re.compile(r"(?i)\b[A-Z]:\\(?:codexo|BaiduNetdiskDownload|WeChat)\\"),
     re.compile("/" + r"Users/[^/\s]+/"),
     re.compile("/" + r"home/[^/\s]+/"),
 ]

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/deep-analysis-execution-result.schema.json",
+  "title": "Data Lens Deep Analysis Execution Result 0.2 (legacy 0.1 accepted)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "source_spec", "execution_id", "decision_question",
+    "analysis_binding", "data_evidence_refs", "execution_status",
+    "coverage_status", "errors", "data_profile", "result"
+  ],
+  "properties": {
+    "contract_version": {"enum": ["data-lens-deep-analysis-execution-result/0.1", "data-lens-deep-analysis-execution-result/0.2"]},
+    "source_spec": {"type": ["object", "null"]},
+    "execution_id": {"type": "string"},
+    "decision_question": {"type": "string"},
+    "analysis_binding": {"type": ["object", "null"]},
+    "data_evidence_refs": {
+      "type": ["array", "null"],
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "execution_status": {"enum": ["completed", "invalid_spec", "unverifiable"]},
+    "coverage_status": {"enum": ["completed", "inconclusive", "unverifiable"]},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "data_profile": {"type": ["object", "null"]},
+    "result": {"type": ["object", "null"]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"execution_status": {"const": "completed"}}},
+      "then": {
+        "properties": {
+          "analysis_binding": {"type": "object"},
+          "data_evidence_refs": {"type": "array", "minItems": 1},
+          "data_profile": {"type": "object"},
+          "result": {"type": "object", "required": ["primary_value"]}
+        }
+      }
+    }
+  ]
+}

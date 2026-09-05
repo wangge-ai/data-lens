@@ -21,3 +21,8 @@ build/
 *.egg-info/
 .DS_Store
 Thumbs.db
+
+# Local evaluator-side holdouts; only the public probes belong in releases.
+evals/semantic-conformance/expectations-private.json
+evals/semantic-conformance/responses-pass.json
+evals/semantic-conformance/responses-fail.json

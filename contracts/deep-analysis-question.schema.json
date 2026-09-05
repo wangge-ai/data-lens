@@ -1,0 +1,329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/deep-analysis-question.schema.json",
+  "title": "Data Lens Deep Analysis Question 0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "decision_question", "objective", "scope", "data_readiness"],
+  "properties": {
+    "contract_version": {"const": "data-lens-deep-analysis-question/0.1"},
+    "decision_question": {"type": "string", "minLength": 1},
+    "objective": {
+      "enum": ["describe", "compare", "diagnose", "explain", "predict", "estimate_effect", "choose_action"]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["population", "analysis_unit", "outcome"],
+      "properties": {
+        "population": {"type": "string", "minLength": 1},
+        "analysis_unit": {"type": "string", "minLength": 1},
+        "time_field": {"type": "string", "minLength": 1},
+        "time_granularity": {"type": "string", "minLength": 1},
+        "segments": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "outcome": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "field", "unit"],
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "field": {"type": "string", "minLength": 1},
+            "unit": {"type": "string", "minLength": 1},
+            "better_direction": {"enum": ["higher", "lower", "target_range", "context_dependent"]}
+          }
+        }
+      }
+    },
+    "data_readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_refs", "outcome_observed", "exposure_observed", "stable_measurement",
+        "temporal_order_known", "repeated_units", "pre_post_periods", "comparison_groups",
+        "missingness_assessed"
+      ],
+      "properties": {
+        "evidence_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "outcome_observed": {"type": "boolean"},
+        "exposure_observed": {"type": "boolean"},
+        "stable_measurement": {"enum": ["supported", "uncertain", "violated"]},
+        "temporal_order_known": {"type": "boolean"},
+        "repeated_units": {"type": "boolean"},
+        "pre_post_periods": {"type": "boolean"},
+        "comparison_groups": {"type": "boolean"},
+        "missingness_assessed": {"type": "boolean"}
+      }
+    },
+    "data_generating_process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed_drivers", "unobserved_drivers", "selection_process", "mechanism_edges"],
+      "properties": {
+        "observed_drivers": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "unobserved_drivers": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "selection_process": {"type": "string", "minLength": 1},
+        "mechanism_edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "target", "relation", "evidence_refs"],
+            "properties": {
+              "source": {"type": "string", "minLength": 1},
+              "target": {"type": "string", "minLength": 1},
+              "relation": {"enum": ["causes", "mediates", "confounds", "selects", "measures", "feeds_back", "associated_with"]},
+              "evidence_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+            }
+          }
+        }
+      }
+    },
+    "candidate_mechanisms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["mechanism_id", "claim", "divergent_prediction"],
+        "properties": {
+          "mechanism_id": {"type": "string", "minLength": 1},
+          "claim": {"type": "string", "minLength": 1},
+          "divergent_prediction": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "heterogeneity_design": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "segment_field", "group_field", "group_a", "group_b", "effect_scope"],
+      "properties": {
+        "target": {"type": "string", "minLength": 1},
+        "segment_field": {"type": "string", "minLength": 1},
+        "group_field": {"type": "string", "minLength": 1},
+        "group_a": {},
+        "group_b": {},
+        "minimum_group_n": {"type": "integer", "minimum": 2},
+        "effect_scope": {"enum": ["descriptive", "causal"]},
+        "design_evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "validation_mode": {"enum": ["prespecified", "honest_split"]},
+        "split_field": {"type": "string", "minLength": 1},
+        "discovery_value": {},
+        "estimation_value": {},
+        "unit_id_field": {"type": "string", "minLength": 1},
+        "discovery_min_group_n": {"type": "integer", "minimum": 2},
+        "estimation_min_group_n": {"type": "integer", "minimum": 2},
+        "discovery_min_abs_difference": {"type": "number", "minimum": 0},
+        "max_selected_subgroups": {"type": "integer", "minimum": 2},
+        "minimum_confirmed_subgroups": {"type": "integer", "minimum": 2},
+        "selection_metric": {"const": "absolute_difference"},
+        "confirmation_rule": {"const": "same_direction_and_interval_excludes_zero"}
+      }
+    },
+    "mechanism_design": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target", "mechanism_id", "mechanism_variable", "changed_or_isolated_variable",
+        "baseline_hypothesis_id", "candidate_hypothesis_id", "required_granularity",
+        "evaluation_window", "measurement", "hypothesis_predictions"
+      ],
+      "properties": {
+        "target": {"type": "string", "minLength": 1},
+        "mechanism_id": {"type": "string", "minLength": 1},
+        "mechanism_variable": {"type": "string", "minLength": 1},
+        "changed_or_isolated_variable": {"type": "string", "minLength": 1},
+        "baseline_hypothesis_id": {"type": "string", "minLength": 1},
+        "candidate_hypothesis_id": {"type": "string", "minLength": 1},
+        "required_granularity": {"type": "string", "minLength": 1},
+        "evaluation_window": {"type": "object"},
+        "measurement": {"type": "object"},
+        "hypothesis_predictions": {"type": "object"}
+      }
+    },
+    "causal_design": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "intervention": {"type": "string", "minLength": 1},
+        "comparator": {"type": "string", "minLength": 1},
+        "group_field": {"type": "string", "minLength": 1},
+        "intervention_value": {},
+        "comparator_value": {},
+        "assignment_mechanism": {"enum": ["randomized", "as_if_random", "observational", "unknown"]},
+        "time_zero": {"type": "string", "minLength": 1},
+        "followup_end": {"type": "string", "minLength": 1},
+        "estimand": {"type": "string", "minLength": 1},
+        "estimator": {"enum": ["group_mean_difference", "group_median_difference", "group_rate_difference", "difference_in_differences"]},
+        "identification_strategy": {
+          "enum": ["randomized", "backdoor", "difference_in_differences", "interrupted_time_series", "regression_discontinuity", "instrumental_variable", "frontdoor", "none"]
+        },
+        "positivity": {"enum": ["supported", "uncertain", "violated"]},
+        "consistency": {"enum": ["supported", "uncertain", "violated"]},
+        "confounder_review_status": {"enum": ["complete", "incomplete"]},
+        "design_evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "identification_checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "assignment_integrity": {"$ref": "#/$defs/readiness_check"},
+            "adjustment_set": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+            "parallel_trends": {"$ref": "#/$defs/readiness_check"},
+            "no_anticipation": {"$ref": "#/$defs/readiness_check"},
+            "intervention_time": {"type": "string", "minLength": 1},
+            "stable_pretrend": {"$ref": "#/$defs/readiness_check"},
+            "running_variable": {"type": "string", "minLength": 1},
+            "cutoff": {"type": "string", "minLength": 1},
+            "continuity": {"$ref": "#/$defs/readiness_check"},
+            "instrument": {"type": "string", "minLength": 1},
+            "instrument_relevance": {"$ref": "#/$defs/readiness_check"},
+            "exclusion_restriction": {"$ref": "#/$defs/readiness_check"},
+            "mediator": {"type": "string", "minLength": 1},
+            "frontdoor_criteria": {"$ref": "#/$defs/readiness_check"}
+          }
+        },
+        "known_confounders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "status"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "status": {"enum": ["measured", "unmeasured", "unknown"]}
+            }
+          }
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "status", "evidence_refs"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "status": {"enum": ["supported", "untested", "violated"]},
+              "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}}
+            }
+          }
+        }
+      }
+    },
+    "prediction_design": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": {"type": "string", "minLength": 1},
+        "horizon": {"type": "string", "minLength": 1},
+        "horizon_steps": {"type": "integer", "minimum": 1},
+        "horizon_unit": {"type": "string", "minLength": 1},
+        "cutoff": {"type": "string", "minLength": 1},
+        "cutoff_mode": {"enum": ["rolling_origin", "fixed_holdout"]},
+        "validation": {"enum": ["rolling_origin", "future_holdout", "independent_holdout", "random_split", "none"]},
+        "metric": {"type": "string", "minLength": 1},
+        "baseline_model": {"type": "string", "minLength": 1},
+        "baseline_kind": {"enum": ["last_observation", "seasonal_naive", "median_interval", "custom"]},
+        "baseline_model_id": {"type": "string", "minLength": 1},
+        "minimum_history": {"type": "integer", "minimum": 2},
+        "minimum_improvement": {"type": "number", "minimum": 0, "maximum": 1},
+        "uncertainty_method": {"const": "circular_block_bootstrap"},
+        "confidence_level": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+        "bootstrap_replicates": {"type": "integer", "minimum": 200},
+        "bootstrap_seed": {"type": "integer"},
+        "block_length": {"type": "integer", "minimum": 1},
+        "minimum_origins": {"type": "integer", "minimum": 5},
+        "model_specs": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["model_id", "kind"],
+            "properties": {
+              "model_id": {"type": "string", "minLength": 1},
+              "kind": {"enum": ["last_observation", "rolling_mean", "linear_trend", "seasonal_naive"]},
+              "window": {"type": "integer", "minimum": 2},
+              "season_length": {"type": "integer", "minimum": 2}
+            }
+          }
+        }
+      }
+    },
+    "decision_design": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "evidence_basis": {"enum": ["causal_effect", "prediction", "descriptive_rule"]},
+        "target": {"type": "string", "minLength": 1},
+        "actor": {"type": "string", "minLength": 1},
+        "action_options": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "utility_metric": {"type": "string", "minLength": 1},
+        "costs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "constraints": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "decision_threshold": {"type": "string", "minLength": 1},
+        "evaluation_mode": {"enum": ["scenario_utility", "logged_policy"]},
+        "action_field": {"type": "string", "minLength": 1},
+        "benefit_field": {"type": "string", "minLength": 1},
+        "cost_field": {"type": "string", "minLength": 1},
+        "probability_field": {"type": "string", "minLength": 1},
+        "weight_field": {"type": "string", "minLength": 1},
+        "baseline_action": {"type": "string", "minLength": 1},
+        "fallback_action": {"type": "string", "minLength": 1},
+        "minimum_net_utility": {"type": "number"},
+        "minimum_advantage": {"type": "number"},
+        "logged_action_field": {"type": "string", "minLength": 1},
+        "action_values": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "reward_field": {"type": "string", "minLength": 1},
+        "propensity_field": {"type": "string", "minLength": 1},
+        "bootstrap_unit_field": {"type": "string", "minLength": 1},
+        "estimators": {"type": "array", "minItems": 1, "items": {"enum": ["ips", "snips", "doubly_robust"]}, "uniqueItems": true},
+        "primary_estimator": {"enum": ["ips", "snips", "doubly_robust"]},
+        "q_logged_field": {"type": "string", "minLength": 1},
+        "policy_specs": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["policy_id", "policy_type"],
+            "properties": {
+              "policy_id": {"type": "string", "minLength": 1},
+              "policy_type": {"enum": ["explicit_probabilities", "logging_policy", "uniform_policy"]},
+              "action_probability_fields": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}},
+              "q_policy_field": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "minimum_effective_sample_size": {"type": "number", "exclusiveMinimum": 0},
+        "maximum_importance_weight": {"type": "number", "exclusiveMinimum": 0},
+        "confidence_level": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+        "bootstrap_replicates": {"type": "integer", "minimum": 200},
+        "bootstrap_seed": {"type": "integer"},
+        "weight_clip_grid": {"type": "array", "minItems": 1, "items": {"type": "number", "exclusiveMinimum": 0}, "uniqueItems": true},
+        "propensity_floor_grid": {"type": "array", "minItems": 1, "items": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1}, "uniqueItems": true},
+        "constraint_rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "aggregation", "operator", "value"],
+            "properties": {
+              "field": {"type": "string", "minLength": 1},
+              "aggregation": {"enum": ["sum", "mean", "min", "max"]},
+              "operator": {"enum": ["gt", "gte", "lt", "lte", "eq", "neq", "between", "outside", "abs_lte", "abs_gte", "approx_eq"]},
+              "value": {},
+              "tolerance": {"type": "number"}
+            }
+          }
+        },
+        "withdrawal_condition": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "$defs": {
+    "readiness_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_refs"],
+      "properties": {
+        "status": {"enum": ["supported", "uncertain", "violated"]},
+        "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+      }
+    }
+  }
+}

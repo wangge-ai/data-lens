@@ -445,12 +445,36 @@ def build_plan(goal: str, inventory: dict[str, Any], scope_gate: dict[str, Any] 
             "平台是必选分析维度；平台口径不同则先分别计算，再在兼容指标上汇总",
         ])
 
+    canonical_items = int((inventory.get("summary") or {}).get("canonical_items") or sum(role_counts.values()))
+    research_requested = bool(re.search(r"正式(?:评测|盲测|审计|发布)|高风险|因果效应|离线策略评估|预测模型竞争", goal, re.I))
+    evidence_needed = bool(
+        canonical_items > 20
+        or role_diversity >= 2
+        or repeated_operational_shape
+        or has_av
+        or has_pdf
+        or route in {"mixed_corpus", "repeated_operational_tables", "multimodal_evidence"}
+    )
+    execution_tier = "research_grade" if research_requested else "evidence_mode" if evidence_needed else "default_enhancement"
+    tier_steps = {
+        "default_enhancement": ["host_natural_analysis_e0", "targeted_high_impact_verification", "bounded_residual_search", "preserving_synthesis"],
+        "evidence_mode": ["inventory_and_scope", "deterministic_coverage_and_locators", "host_natural_analysis_e0", "targeted_measurement", "preserving_synthesis"],
+        "research_grade": ["inventory_and_scope", "compiled_analysis_plan", "deterministic_execution", "candidate_and_adoption_ledgers", "independent_review", "preserving_synthesis"],
+    }
+    optional_capability_candidates: list[str] = []
+    if has_tabular and re.search(r"非线性|留存|生存|多层|混合效应|模型竞争|置信区间", goal, re.I):
+        optional_capability_candidates.append("r_if_method_eligible")
+    if (has_visual or has_pdf) and route == "multimodal_evidence":
+        optional_capability_candidates.append("ocr_if_visible_text_is_decision_relevant")
+    if has_av:
+        optional_capability_candidates.append("local_whisper_if_speech_is_decision_relevant_and_checkpoint_exists")
+
     fingerprint = hashlib.sha256((goal + "|" + route + "|" + ",".join(item["id"] for item in dimensions)).encode("utf-8")).hexdigest()[:12]
     method_fingerprint = hashlib.sha256(
-        (SKILL_VERSION + "|" + route + "|" + ",".join(sorted(set(supporting))) + "|" + ",".join(sorted(ids))).encode("utf-8")
+        (SKILL_VERSION + "|" + route + "|" + execution_tier + "|" + ",".join(sorted(set(supporting))) + "|" + ",".join(sorted(ids))).encode("utf-8")
     ).hexdigest()
     return {
-        "plan_version": "1.6",
+        "plan_version": "1.7",
         "skill_name": SKILL_NAME,
         "skill_version": SKILL_VERSION,
         "user_goal": goal,
@@ -458,6 +482,13 @@ def build_plan(goal: str, inventory: dict[str, Any], scope_gate: dict[str, Any] 
         "recognized_dimensions": [{"id": item["id"], "label": item["label"]} for item in dimensions],
         "primary_route": route,
         "route_confidence": confidence,
+        "execution_tier": {
+            "id": execution_tier,
+            "required_steps": tier_steps[execution_tier],
+            "optional_capability_candidates": optional_capability_candidates,
+            "duckdb": "deferred_until_measured_cross_file_or_memory_pressure",
+            "boundary": "Execution tier selects the smallest sufficient workflow; it never weakens high-impact verification or claim boundaries.",
+        },
         "supporting_modules": list(dict.fromkeys(supporting)),
         "method_fingerprint": method_fingerprint,
         "comparison_unit": comparison_unit,
@@ -484,7 +515,7 @@ def build_plan(goal: str, inventory: dict[str, Any], scope_gate: dict[str, Any] 
             "must_record_route_or_angle_override_reason": True,
         },
         "corpus_shape": {
-            "canonical_items": int((inventory.get("summary") or {}).get("canonical_items") or sum(role_counts.values())),
+            "canonical_items": canonical_items,
             "role_diversity": role_diversity,
             "container_diversity": container_diversity,
             "by_evidence_role": role_counts,

@@ -1,0 +1,174 @@
+{
+  "contract_version": "data-lens-hypothesis-experiment-result/0.2",
+  "source_spec": {
+    "contract_version": "data-lens-hypothesis-experiment/0.1",
+    "experiment_id": "OPENING-RANDOMIZED-1",
+    "decision_question": "这批文章中有哪些值得用于下一轮内容实验的结构模式？",
+    "mode": "atomic_claims",
+    "target_mechanism": "结果前置开头影响继续阅读率",
+    "data_source": {
+      "path": "synthetic-experiment-data.json",
+      "format": "json",
+      "granularity": "daily",
+      "time_field": "publish_date"
+    },
+    "data_evidence_refs": [
+      "E-DATA-1"
+    ],
+    "analysis_binding": {
+      "analysis_layer": "causal",
+      "target": "两种开头的平均继续阅读率差",
+      "validation_type": "randomized_experiment",
+      "method": "group_mean_difference",
+      "component_id": "OPENING-EFFECT",
+      "design_evidence_refs": [
+        "E-DESIGN-1",
+        "E-ASSIGNMENT-CHECK-1"
+      ],
+      "outcome_field": "read_through",
+      "identification_strategy": "randomized",
+      "intervention": "结果前置开头",
+      "comparator": "步骤前置开头",
+      "group_field": "opening_arm",
+      "intervention_value": "result_first",
+      "comparator_value": "steps_first"
+    },
+    "declared_dimensions": [
+      "path"
+    ],
+    "components": [
+      {
+        "component_id": "OPENING-EFFECT",
+        "dimension": "path",
+        "statement": "随机结果前置组的继续阅读率高于步骤前置组",
+        "required_granularity": "daily",
+        "evaluation_window": {
+          "start": "2026-01-01",
+          "end": "2026-01-04"
+        },
+        "measurement": {
+          "kind": "group_mean_difference",
+          "field": "read_through",
+          "group_field": "opening_arm",
+          "group_a": "result_first",
+          "group_b": "steps_first"
+        },
+        "expectation": {
+          "operator": "gt",
+          "value": 0
+        }
+      }
+    ]
+  },
+  "experiment_id": "OPENING-RANDOMIZED-1",
+  "decision_question": "这批文章中有哪些值得用于下一轮内容实验的结构模式？",
+  "mode": "atomic_claims",
+  "candidate_id": "",
+  "target_mechanism": "结果前置开头影响继续阅读率",
+  "analysis_binding": {
+    "analysis_layer": "causal",
+    "target": "两种开头的平均继续阅读率差",
+    "validation_type": "randomized_experiment",
+    "method": "group_mean_difference",
+    "component_id": "OPENING-EFFECT",
+    "design_evidence_refs": [
+      "E-DESIGN-1",
+      "E-ASSIGNMENT-CHECK-1"
+    ],
+    "outcome_field": "read_through",
+    "identification_strategy": "randomized",
+    "intervention": "结果前置开头",
+    "comparator": "步骤前置开头",
+    "group_field": "opening_arm",
+    "intervention_value": "result_first",
+    "comparator_value": "steps_first"
+  },
+  "data_evidence_refs": [
+    "E-DATA-1"
+  ],
+  "data_profile": {
+    "kind": "file",
+    "format": "json",
+    "path": "synthetic-experiment-data.json",
+    "row_count": 4,
+    "sha256": "c070330e610189d5fb2534290a81dc11956039e4c68d29c592445034b8bb7689"
+  },
+  "execution_status": "completed",
+  "errors": [],
+  "dimensions": {
+    "direction": {
+      "coverage": "not_claimed",
+      "components": []
+    },
+    "time": {
+      "coverage": "not_claimed",
+      "components": []
+    },
+    "point": {
+      "coverage": "not_claimed",
+      "components": []
+    },
+    "path": {
+      "coverage": "assessed",
+      "components": [
+        {
+          "component_id": "OPENING-EFFECT",
+          "dimension": "path",
+          "statement": "随机结果前置组的继续阅读率高于步骤前置组",
+          "required_granularity": "daily",
+          "available_granularity": "daily",
+          "evaluation_window_spec": {
+            "start": "2026-01-01",
+            "end": "2026-01-04"
+          },
+          "measurement_spec": {
+            "kind": "group_mean_difference",
+            "field": "read_through",
+            "group_field": "opening_arm",
+            "group_a": "result_first",
+            "group_b": "steps_first"
+          },
+          "status": "supported",
+          "reason": null,
+          "window": {
+            "declared_start": "2026-01-01",
+            "declared_end": "2026-01-04",
+            "included_row_count": 4,
+            "excluded_outside_window_count": 0,
+            "invalid_time_row_count": 0,
+            "window_expanded": false
+          },
+          "measurement": {
+            "kind": "group_mean_difference",
+            "value": 0.08,
+            "group_a": {
+              "value": 0.58,
+              "n": 2
+            },
+            "group_b": {
+              "value": 0.5,
+              "n": 2
+            },
+            "difference_definition": "group_a_minus_group_b"
+          },
+          "expectation": {
+            "operator": "gt",
+            "value": 0
+          }
+        }
+      ]
+    },
+    "invalidation": {
+      "coverage": "not_claimed",
+      "components": []
+    }
+  },
+  "summary": {
+    "component_count": 1,
+    "status_counts": {
+      "supported": 1
+    },
+    "total_label": null,
+    "note": "No overall label is emitted; each claimed dimension keeps its own outcome."
+  }
+}

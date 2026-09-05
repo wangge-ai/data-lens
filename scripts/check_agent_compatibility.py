@@ -6,7 +6,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SKILL = ROOT / "SKILL.md"
+VERSION = ROOT / "VERSION"
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+
+from package_workbuddy_skill import build_workbuddy_skill_text, validate_workbuddy_skill_text
 
 
 def validate() -> list[str]:
@@ -25,6 +28,9 @@ def validate() -> list[str]:
     description = re.search(r"(?m)^description:\s*(.+)$", frontmatter)
     if not description or len(description.group(1).strip(" \"'")) < 40:
         errors.append("frontmatter description is missing or too weak for discovery")
+    canonical_version = VERSION.read_text(encoding="utf-8").strip()
+    generated_workbuddy_skill = build_workbuddy_skill_text(text, canonical_version, "Wangge")
+    errors.extend(validate_workbuddy_skill_text(generated_workbuddy_skill, canonical_version))
     for forbidden in ("allowed-tools:", "context:", "agent:", "model:"):
         if forbidden in frontmatter:
             errors.append(f"platform-specific canonical frontmatter field is not allowed: {forbidden}")
@@ -59,7 +65,7 @@ def main() -> None:
     if errors:
         print("\n".join(errors))
         raise SystemExit(1)
-    print("Codex, Claude Code, and WorkBuddy/CodeBuddy compatibility checks passed")
+    print("Codex and Claude Code source compatibility plus WorkBuddy/CodeBuddy generated-package compatibility checks passed")
 
 
 if __name__ == "__main__":

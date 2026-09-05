@@ -1,0 +1,70 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.deep_analysis_execution",
+  "version": "0.2.0",
+  "status": "experimental",
+  "name": "异质性、机制、预测与决策执行器",
+  "purpose": "Execute frozen analytical targets with failure-sensitive evidence: prespecified or honest split-sample subgroup heterogeneity, a direct experiment that distinguishes competing mechanisms, rolling-origin forecast competition with paired loss uncertainty, and either scenario utility or logged-policy evaluation with overlap and sensitivity diagnostics.",
+  "question_types": ["heterogeneity", "mechanism_discrimination", "prediction_validation", "decision_policy"],
+  "accepted_units": ["observation", "time_point", "subgroup", "scenario", "action_option"],
+  "input_shapes": ["CSV or JSON rows", "compiled deep-analysis target binding"],
+  "eligibility_checks": [
+    "the execution target exactly matches a freshly compiled analytical layer",
+    "the input is a locatable hashed file with verified data evidence references",
+    "subgroup cells and honest splits, prediction origins and block length, mechanism predictions, or policy overlap meet the method-specific minimums",
+    "the runner can reproduce the saved result from the embedded source specification"
+  ],
+  "assumptions": [
+    "subgroup contrasts are descriptive unless separately bound to a supported causal design; data-driven subgroup discovery uses non-overlapping estimation units",
+    "a mechanism test is discriminating only when exactly one frozen competing prediction matches",
+    "forecast competitors use identical rolling origins and no values after each origin; a candidate win requires its paired mean-loss interval to clear zero",
+    "logged-policy evaluation assumes correct recorded propensities, consistency, independent bootstrap units, and overlap, while estimator agreement, clipping, and propensity-floor sensitivity do not eliminate hidden confounding",
+    "a selected action is conditional on the frozen reward or utility, policy, constraint, overlap, uncertainty, sensitivity, threshold, and fallback definitions"
+  ],
+  "human_gates": ["review causal interpretation and operational utility definitions before acting on a completed result"],
+  "implementation": {
+    "runtime": "python",
+    "entrypoint": "scripts/run_deep_analysis_execution.py",
+    "network_policy": "deny",
+    "optional_dependencies": []
+  },
+  "outputs": [
+    "prespecified subgroup contrasts or discovery-selected subgroup estimates on non-overlapping units",
+    "measured support for exactly one of two frozen mechanism predictions or an inconclusive result",
+    "same-origin out-of-sample scores and circular-block paired loss intervals for a baseline and one or more forecast competitors",
+    "per-action scenario utility or IPS, SNIPS, and doubly robust logged-policy values with cluster-level effective sample size, maximum weight, multiplicity-adjusted uncertainty, estimator agreement, sensitivity, and fallback behavior",
+    "completed, inconclusive, or unverifiable result coverage without a combined depth score"
+  ],
+  "diagnostics": [
+    "insufficient subgroup cells, split contamination, or discovery effects that fail independent estimation-sample confirmation",
+    "mechanism variable is not the changed or isolated variable",
+    "both or neither mechanism predictions match",
+    "duplicate timestamps, insufficient common origins, block length beyond available origins, or forecast loss intervals crossing zero",
+    "missing action scenarios, invalid target probabilities or logged propensities, low effective sample size, excessive importance weights, unstable sensitivity results, infeasible fallback, or failed constraints"
+  ],
+  "evidence_requirements": [
+    "locatable source rows and file digest",
+    "exact compiled layer binding",
+    "explicit data evidence references",
+    "method-specific group, time, prediction, or utility definitions"
+  ],
+  "allowed_claims": [
+    "the declared subgroup contrast varies across the tested segments",
+    "one frozen explanation is better supported than its competitor by the direct test",
+    "one model outperforms the baseline for the frozen horizon, origins, metric, improvement threshold, and paired-loss uncertainty design",
+    "one action, one logged policy, or the fallback is selected under the frozen utility, overlap, uncertainty, sensitivity, and feasibility rules"
+  ],
+  "forbidden_claims": [
+    "descriptive subgroup differences prove causal heterogeneity",
+    "an inconclusive mechanism result completes the mechanism layer",
+    "discovery-sample subgroup rank is presented as independent confirmation",
+    "a point forecast improvement whose paired-loss interval crosses zero wins a forecast competition",
+    "offline policy value is interpreted causally without valid logging propensities and overlap, or sensitivity stability is treated as proof against hidden confounding",
+    "expected utility authorizes action outside the declared constraints or withdrawal condition",
+    "one result completes a different analytical layer"
+  ],
+  "validation": {
+    "status": "regression_tested",
+    "fixtures": ["tests/test_deep_analysis_execution.py", "tests/test_data_lens_extensions.py"]
+  }
+}

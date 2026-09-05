@@ -1,0 +1,47 @@
+{
+  "contract_version": "data-lens-deep-evidence-cards/1.0",
+  "cards": [
+    {
+      "id": "EV-PROFIT-01",
+      "claim": "合成店铺月表包含月份、店铺、分群、推广占比和前台利润字段。",
+      "source": "monthly-profit.csv",
+      "source_sha256": "88dd21db2b90f8722893129326ff56481759688a2f3184ad79fe0202d4bb3ad4",
+      "locator": {"type": "csv_row", "row": 1},
+      "verified": true,
+      "unit_id": "STORE-A-2024-01",
+      "independence_group": "SYNTHETIC-PROFIT-TABLE",
+      "family_id": "F-PROFIT",
+      "lane": "business_metric",
+      "directness": "direct"
+    },
+    {
+      "id": "EV-DESIGN-01",
+      "claim": "合成设计记录声明以店铺-月为分配单位，在降低推广占比与维持推广占比两组之间随机分配。",
+      "source": "randomization-record.json",
+      "source_sha256": "d6956e6b42fdafcffe6c4e0145a7ed5bbdd304d20c6dc86fbad40005fd0fa599",
+      "locator": {"type": "json_pointer", "pointer": "/binding", "expected": {"analysis_unit": "店铺-月", "outcome_name": "前台利润", "outcome_field": "front_profit", "intervention": "将推广营业额占比降低5个百分点", "comparator": "推广占比保持不变", "group_field": "promo_policy_arm", "intervention_value": "reduce_5pp", "comparator_value": "unchanged", "assignment_mechanism": "randomized", "identification_strategy": "randomized", "estimand": "持续经营店铺两个月前台利润平均处理效应", "estimator": "group_mean_difference"}},
+      "design_binding": {"analysis_unit": "店铺-月", "outcome_name": "前台利润", "outcome_field": "front_profit", "intervention": "将推广营业额占比降低5个百分点", "comparator": "推广占比保持不变", "group_field": "promo_policy_arm", "intervention_value": "reduce_5pp", "comparator_value": "unchanged", "assignment_mechanism": "randomized", "identification_strategy": "randomized", "estimand": "持续经营店铺两个月前台利润平均处理效应", "estimator": "group_mean_difference"},
+      "verified": true,
+      "unit_id": "SYNTHETIC-DESIGN-1",
+      "independence_group": "SYNTHETIC-DESIGN-1",
+      "family_id": "F-PROFIT",
+      "lane": "experiment_design",
+      "directness": "direct"
+    },
+    {
+      "id": "EV-ASSIGNMENT-CHECK-01",
+      "claim": "合成分配完整性检查显示降低推广与维持推广两组各有 4 个观测单位。",
+      "source": "assignment-check.json",
+      "source_sha256": "8da66805ee86a47c76d03eca753209cf80bb3443430836a41447f3023142b9a7",
+      "locator": {"type": "json_pointer", "pointer": "/binding", "expected": {"design": {"analysis_unit": "店铺-月", "outcome_name": "前台利润", "outcome_field": "front_profit", "intervention": "将推广营业额占比降低5个百分点", "comparator": "推广占比保持不变", "group_field": "promo_policy_arm", "intervention_value": "reduce_5pp", "comparator_value": "unchanged", "assignment_mechanism": "randomized", "identification_strategy": "randomized", "estimand": "持续经营店铺两个月前台利润平均处理效应", "estimator": "group_mean_difference"}, "check": {"check_name": "assignment_integrity", "status": "supported", "observed_units_per_arm": {"reduce_5pp": 4, "unchanged": 4}}}},
+      "design_binding": {"analysis_unit": "店铺-月", "outcome_name": "前台利润", "outcome_field": "front_profit", "intervention": "将推广营业额占比降低5个百分点", "comparator": "推广占比保持不变", "group_field": "promo_policy_arm", "intervention_value": "reduce_5pp", "comparator_value": "unchanged", "assignment_mechanism": "randomized", "identification_strategy": "randomized", "estimand": "持续经营店铺两个月前台利润平均处理效应", "estimator": "group_mean_difference"},
+      "identification_check_binding": {"check_name": "assignment_integrity", "status": "supported", "observed_units_per_arm": {"reduce_5pp": 4, "unchanged": 4}},
+      "verified": true,
+      "unit_id": "SYNTHETIC-ASSIGNMENT-CHECK-1",
+      "independence_group": "SYNTHETIC-ASSIGNMENT-CHECK-1",
+      "family_id": "F-PROFIT",
+      "lane": "identification_check",
+      "directness": "derived"
+    }
+  ]
+}

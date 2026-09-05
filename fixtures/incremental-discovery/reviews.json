@@ -1,0 +1,30 @@
+{
+  "contract_version": "data-lens-incremental-discovery-reviews/0.1",
+  "decision_question": "这套方法真正依赖什么增长逻辑，最关键的问题是什么？",
+  "reviews": [
+    {
+      "candidate_id": "E1-METRIC",
+      "reviewer_pass": "holdout-pass-1",
+      "structure_status": "distinct",
+      "prediction_status": "divergent",
+      "novelty_status": "new_to_e0",
+      "mechanism_test_status": "direct",
+      "holdout_status": "supports_e1",
+      "decision_status": "changes",
+      "review_evidence_refs": ["E-HOLD-1"],
+      "rationale": "留出材料直接支持指标会被主动改变以及停止后回落，改变了放大赢家前的验证顺序。"
+    },
+    {
+      "candidate_id": "E1-SELECTION",
+      "reviewer_pass": "holdout-pass-1",
+      "structure_status": "distinct",
+      "prediction_status": "divergent",
+      "novelty_status": "new_to_e0",
+      "mechanism_test_status": "direct",
+      "holdout_status": "not_tested",
+      "decision_status": "refines",
+      "review_evidence_refs": [],
+      "rationale": "候选产生了不同的分布预测和直接测试，但当前没有独立留出结果。"
+    }
+  ]
+}

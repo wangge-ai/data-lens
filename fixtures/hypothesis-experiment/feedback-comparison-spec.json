@@ -1,0 +1,43 @@
+{
+  "contract_version": "data-lens-hypothesis-experiment/0.1",
+  "experiment_id": "EXP-FEEDBACK-1",
+  "decision_question": "这套方法真正依赖什么增长逻辑，最关键的问题是什么？",
+  "mode": "hypothesis_comparison",
+  "candidate_id": "E1-METRIC",
+  "data_evidence_refs": ["E-HOLD-1"],
+  "candidate_core_mechanism": "主动塑造早期指标导致筛选系统持续向假赢家配置资源",
+  "target_mechanism": "主动塑造早期指标导致筛选系统持续向假赢家配置资源",
+  "mechanism_variable": "早期反馈是否来自自然用户",
+  "changed_or_isolated_variable": "早期反馈是否来自自然用户",
+  "measurement_window_claim": "停止加速后的30天",
+  "distinguishing_observation": "停止加速后的排名保持度与30日自然成交",
+  "baseline_hypothesis_id": "E0",
+  "candidate_hypothesis_id": "E1-METRIC",
+  "hypotheses": [
+    {
+      "hypothesis_id": "E0",
+      "statement": "两组早期排名对后续自然成交的预测力接近",
+      "prediction": {"operator": "abs_lte", "value": 0.1}
+    },
+    {
+      "hypothesis_id": "E1-METRIC",
+      "statement": "自然反馈组的排名保持度和后续自然成交预测力更高",
+      "prediction": {"operator": "gt", "value": 0.2}
+    }
+  ],
+  "data_source": {
+    "path": "feedback-comparison.csv",
+    "format": "csv",
+    "granularity": "daily",
+    "time_field": "date"
+  },
+  "required_granularity": "daily",
+  "evaluation_window": {"start": "2026-01-01", "end": "2026-01-03"},
+  "measurement": {
+    "kind": "group_mean_difference",
+    "field": "retention_30d",
+    "group_field": "feedback_origin",
+    "group_a": "natural",
+    "group_b": "shaped"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "text": "欢迎关注 欢迎关注",
+  "language": "zh",
+  "segments": [
+    {"start": 0.0, "end": 1.5, "text": "欢迎关注", "avg_logprob": -1.2, "compression_ratio": 2.9, "no_speech_prob": 0.72, "words": []},
+    {"start": 1.5, "end": 3.0, "text": "欢迎关注", "avg_logprob": -1.1, "compression_ratio": 2.8, "no_speech_prob": 0.68, "words": []}
+  ]
+}

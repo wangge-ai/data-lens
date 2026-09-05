@@ -230,13 +230,16 @@ tbody tr:last-child td { border-bottom: 0; }
   h1 { max-width: 100%; font-size: 28px; overflow-wrap: anywhere; word-break: break-word; }
   .lead { overflow-wrap: anywhere; }
   .completion-status { grid-template-columns: 1fr; gap: var(--space-1); }
-  .header-meta { grid-template-columns: 1fr; }
-  .header-meta div, .header-meta div:first-child { display: grid; grid-template-columns: 100px 1fr; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--line); border-left: 0; }
-  .header-meta dd { margin: 0; font-size: 15px; }
-  .toc-group { grid-template-columns: 1fr; gap: 0; }
-  .toc-group h2 { padding-top: 0; }
-  .toc-group ul { display: flex; flex-wrap: wrap; gap: 2px 12px; }
-  .toc-group a { min-height: 34px; padding: 5px 0; }
+  .header-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .header-meta div, .header-meta div:first-child { display: block; padding: var(--space-2) var(--space-1) 0; border-bottom: 0; border-left: 1px solid var(--line); }
+  .header-meta div:first-child { padding-left: 0; border-left: 0; }
+  .header-meta dd { margin-top: 2px; font-size: 15px; }
+  .toc { display: flex; align-items: center; gap: var(--space-2); overflow-x: auto; padding: var(--space-3) var(--space-4); overscroll-behavior-inline: contain; scrollbar-width: thin; }
+  .toc > strong { flex: 0 0 auto; margin: 0 var(--space-1) 0 0; font-size: 15px; white-space: nowrap; }
+  .toc-group, .toc-group ul { display: contents; }
+  .toc-group h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+  .toc-group li { flex: 0 0 auto; }
+  .toc-group a { min-height: 44px; padding: var(--space-2) 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); white-space: nowrap; }
   .comparison-grid, .limit-grid, .action-details, .sample-rule dl, .coverage-row, .experiment-grid, .experiment-details, .visual-gallery, .overview-grid { grid-template-columns: 1fr; }
   .visual-example img { height: auto; max-height: 360px; }
   .comparison-side + .comparison-side { border-top: 1px solid var(--line); border-left: 0; }

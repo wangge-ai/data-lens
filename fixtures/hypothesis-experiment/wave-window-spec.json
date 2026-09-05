@@ -1,0 +1,24 @@
+{
+  "contract_version": "data-lens-hypothesis-experiment/0.1",
+  "experiment_id": "WAVE-WINDOW-1",
+  "decision_question": "下周收阳的判断是否命中？",
+  "mode": "atomic_claims",
+  "data_source": {
+    "path": "wave-window.csv",
+    "format": "csv",
+    "granularity": "daily",
+    "time_field": "date"
+  },
+  "declared_dimensions": ["direction"],
+  "components": [
+    {
+      "component_id": "DIR-NEXT-WEEK",
+      "dimension": "direction",
+      "statement": "2026-08-10 至 2026-08-14 当周收阳",
+      "required_granularity": "daily",
+      "evaluation_window": {"start": "2026-08-10", "end": "2026-08-14"},
+      "measurement": {"kind": "period_pct_change", "field": "close"},
+      "expectation": {"operator": "gt", "value": 0}
+    }
+  ]
+}

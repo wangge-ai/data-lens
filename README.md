@@ -4,6 +4,8 @@ Data Lens 是给 Codex、Claude Code 和 WorkBuddy/CodeBuddy 使用的通用深�
 
 它不是 Excel 专用工具，也不是本地 Web 应用。表格、文章、访谈、案例、PDF、图片、音频、视频和混合资料都可以是输入；文件格式只决定如何读取，用户要做的判断才决定分析方法。
 
+当前发布版本是 **0.9.0-dev.12（2026-09-05）**。它已完成公开合成回归和一次不随仓库分发的 859 文件真实业务重建；这证明当前测试范围和恢复链可用，不代表对所有资料类型都稳定优于裸宿主。
+
 ## 30 秒上手
 
 把仓库克隆到宿主的 Skill 目录。以 Codex 为例：
@@ -15,7 +17,7 @@ git clone https://github.com/wangge-ai/data-lens.git "$env:USERPROFILE\.codex\sk
 重新打开一个任务，然后直接说：
 
 ```text
-使用 $data-lens 深度分析 D:\资料目录。我不提供分析角度，请先自己找重点，最后只给我面向读者的关键结论和行动建议。
+使用 $data-lens 深度分析 <资料目录>。我不提供分析角度，请先自己找重点，最后只给我面向读者的关键结论和行动建议。
 ```
 
 就这些。用户不需要先学习命令，也不需要复制一整套分析框架。
@@ -41,12 +43,18 @@ git clone https://github.com/wangge-ai/data-lens.git "$env:USERPROFILE\.codex\sk
 | 用户不给角度 | 直接选一个看起来合理的主题 | 先比较候选问题的决策影响、解释覆盖和可回答性 |
 | 多份材料的共同点 | 按主题相似度归纳 | 区分来源角色、独立证据、重复材料、冲突和例外 |
 | 问题本质 | 给出一个最连贯的解释 | 保留普通解释 `E0`，只有结构不同且产生不同预测的 `E1` 才算新增洞察 |
+| 裸分析已经很好 | 仍可能从头重跑、增加篇幅 | 切换到反证增强；找不到新结构或新预测就在内部记录无增量，读者稿继续保留最强实质结论 |
+| 机制与实验 | 写出一个看起来可执行的实验 | 模型冻结 E0/E1，Python 锁定粒度和窗口并复算；偏题实验不能验证核心判断 |
+| 分群、预测与决策 | 一个平均数、一种预测或一条建议 | 分群方向和不确定性分开；预测模型在相同滚动起点竞争；行动按收益、成本、约束、阈值与撤回条件评估 |
+| 复合判断 | 用一个“基本命中/不命中”概括 | 方向、时间、点位、路径、失效条件独立给结果，不输出遮盖局部失败的总标签 |
 | 矛盾与制约 | 容易把两个目标或两种意见写成“矛盾” | 要求具体共同载体、反馈、异质反应或阶段转换；证据不够时允许弃权 |
 | 因果性 | 连贯叙事可能被写成因果 | 把事实、关系、机制假设和因果结论分开，主动找反例和竞争解释 |
 | 行动建议 | 给出合理建议 | 区分“长期真正卡住什么”和“现在为什么先做另一件事”，优先设计既改善结果又检验判断的动作 |
 | 交付 | 一份可读回答 | 读者只看结论；需要复核时再查看证据位置、计算明细和运行清单 |
 
 真正的差异不应该是报告更长、术语更多或流程文件更多，而应该是：抓到裸模型漏掉的结构、提出能被新证据推翻的预测，或者更早放弃一个看似漂亮但站不住的解释。
+
+当前升级把这个目标落实为两个可观察行为：终稿必须逐项承接裸模型的高价值发现，不能让新框架把旧洞察冲掉；不同宿主必须在因果、分析单位、显著性、实验直接性和基线保留上给出一致判断。语义探针通过只证明没有这些基础退化，真正“更深”仍要靠新的真实材料盲测证明。
 
 ## 自然语言示例
 
@@ -117,6 +125,8 @@ WorkBuddy/CodeBuddy: ~/.codebuddy/skills/data-lens
 
 也可以让支持本地 Skill 导入的宿主直接导入仓库目录。更新时在该目录执行 `git pull --ff-only`。不同宿主的工具能力不同，但核心分析协议、方法说明和评测材料相同。
 
+WorkBuddy 图形界面导入前运行 `python scripts/package_workbuddy_skill.py`，再导入 `dist/` 中生成的 ZIP。该包会使用 WorkBuddy 要求的 `skills/data-lens/SKILL.md` 根目录和宿主专用元数据，并保留脚本与方法资料；只上传一份 `SKILL.md` 会丢失执行能力。目录检查只能证明包结构兼容，真实效果仍须用同一盲测材料在 WorkBuddy 中独立运行。
+
 ## 工作方式
 
 ```text
@@ -124,10 +134,13 @@ WorkBuddy/CodeBuddy: ~/.codebuddy/skills/data-lens
 → 清点来源、重复、版本与可读性
 → 确认分析对象、范围、单位和证据通道
 → 自动发现或核对高价值问题
+→ 区分描述、解释、预测、干预效果和行动选择，编译各分析层的可行性
 → 选择少量适用方法并完成确定性解析
 → 建立问题地图，生成普通解释和结构不同的竞争解释
-→ 检查反例、替代解释、稳健性和区分证据
+→ Python 执行精确窗口内的分项评分或 E0/E1 区分实验
+→ 检查反例、替代解释、稳健性和区分证据；无新增就在内部记录
 → 形成关键判断、行动与可验证预测
+→ 用已有 E0 保留表做一次轻量终稿对照；恢复遗漏，只保留一个有依赖关系的第一停止点
 → 输出读者报告；复核材料单独保存
 ```
 
@@ -150,17 +163,21 @@ WorkBuddy/CodeBuddy: ~/.codebuddy/skills/data-lens
 python scripts/data_lens.py capabilities
 python scripts/data_lens.py inventory <source> --output inventory.json
 python scripts/data_lens.py plan --goal "your original question" --inventory inventory.json --output plan.json
+python scripts/data_lens.py compile-question --spec deep-analysis-question.json --evidence-cards evidence-cards.json --output deep-analysis-plan.json
+python scripts/data_lens.py run-deep-analysis --spec deep-analysis-execution.json --output deep-analysis-result.json
+python scripts/data_lens.py run-experiment --spec experiment-spec.json --output experiment-result.json
+python scripts/data_lens.py compile-findings --candidates deep-finding-candidates.json --evidence-cards deep-evidence-cards.json --scope-gate corpus-scope-gate.json --analysis-plan deep-analysis-plan.json --output finding-adoption-ledger.json
 python scripts/data_lens.py test
 python scripts/data_lens.py validate-methods
 ```
 
-运行 `python scripts/data_lens.py` 可查看完整命令。默认路径只依赖 Python 标准库；R、Poppler、Tesseract、ffprobe、Pillow、Whisper、sentence-transformers 或向量服务都是可选能力，不会被自动安装或静默调用。
+运行 `python scripts/data_lens.py` 可查看完整命令。默认路径只依赖 Python 标准库；R、Poppler、Tesseract、PaddleOCR、ffprobe、Pillow、Whisper、DuckDB、sentence-transformers 或向量服务都是可选能力，不会被自动安装或静默调用。`capabilities` 会显示当前 Python 解释器以及实际发现的 Rscript；PaddleOCR 和 Whisper 都只接受已经存在的本地模型路径。
 
 ## 证据与读者输出
 
-模型请求成功不等于分析成立。正式发现需要能够回到来源，并说明覆盖、反例、竞争解释、稳健性和决策增量；如果资料只支持描述，就只交付描述，不用更长的文字包装成因果结论。
+模型请求成功不等于分析成立。正式发现需要能够回到来源，并说明覆盖、反例、竞争解释、稳健性和决策增量；如果资料只支持描述，就只交付描述，不用更长的文字包装成因果结论。异质性、机制、预测、因果效果和决策结果必须与重新编译过的计划目标一致，并引用绑定了实际输入文件、结果字段、分组或动作定义和执行组件的分析结果。数据驱动分群必须把发现与估计单位分开；预测竞争必须使用相同滚动起点，点估计领先但配对损失区间跨零时仍保留基线；机制实验必须直接改变或隔离所声称的机制变量；日志策略评估必须检查倾向重叠、有效样本量、极端权重与截断敏感性，任何选择条件失败都返回 fallback。未知结果格式不能自签为可信，`inconclusive` 也不能冒充已完成覆盖；只要一个必需层尚未就绪或未执行，局部结果就不能冒充“核心问题已回答”。
 
-这些检查主要留在内部复核材料中。给普通读者的正文默认只保留：最重要的事实、关键关系、当前解释、重要例外、行动和会改变判断的信号。内部路径、哈希、路由 ID、合同、账本和审计记录不应污染阅读体验。
+这些检查主要留在内部复核材料中。给普通读者的正文默认只保留：最重要的事实、关键关系、当前解释、重要例外、行动和会改变判断的信号。终稿只用已有 E0 保留表做一次轻量对照，恢复遗漏或保留有证据的替代；当用户只要一个最优先动作、或行动存在结果依赖时，只给一个第一停止点。内部路径、哈希、路由 ID、合同、账本、`E0/E1`、增量标签和审计记录不应污染阅读体验。
 
 ## 项目边界
 
@@ -175,7 +192,7 @@ python scripts/check_public_tree.py
 python scripts/check_agent_compatibility.py
 ```
 
-方法与 fixture 要求见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，版本变化见 [`CHANGELOG.md`](CHANGELOG.md)，真实增量评测见 [`evals/`](evals/README.md)。
+发布前应在全新 clone 中执行以上命令；测试 fixture 均为合成或已脱敏材料，真实业务输入、运行中间文件和本机路径不进入仓库。方法与 fixture 要求见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，版本变化见 [`CHANGELOG.md`](CHANGELOG.md)，真实增量评测见 [`evals/`](evals/README.md)。
 
 ## License
 

@@ -1,0 +1,162 @@
+{
+  "contract_version": "data-lens-incremental-discovery-candidates/0.2",
+  "decision_question": "这套方法真正依赖什么增长逻辑，最关键的问题是什么？",
+  "native_first_pass": {
+    "baseline_id": "E0",
+    "capture_mode": "pre_engine_first_pass",
+    "captured_before_engine": true,
+    "core_problem": "借鉴成熟内容提高早期测试速度，但复制会增加长期内容风险。",
+    "mechanism": "复用内容结构减少探索成本，因此可以更快发布并获得反馈。",
+    "evidence_refs": ["E-GEN-2"],
+    "competing_explanations": ["结果主要来自商品需求，而不是内容结构。"],
+    "predictions": ["解决复制风险后，早期互动仍能稳定筛选长期赢家。"],
+    "retained_findings": [
+      "复用内容结构能减少探索成本。",
+      "复制会增加长期内容风险。",
+      "商品需求可能比内容结构更能解释结果。"
+    ],
+    "decision": "保留结构借鉴，但改用自有素材。",
+    "unresolved_observations": ["为什么部分早期高指标商品没有持续自然成交。"]
+  },
+  "search": {
+    "candidate_generation_pass": "candidate-pass-1",
+    "operators_attempted": ["metric_role", "shared_carrier", "selection_process"]
+  },
+  "candidates": [
+    {
+      "candidate_id": "E1-METRIC",
+      "source_operator": "metric_role",
+      "claim": "可见指标既承担需求传感器角色，又可能成为主动塑造目标，因此反馈会放大假赢家。",
+      "core_mechanism": "主动塑造早期指标导致筛选系统持续向假赢家配置资源",
+      "structural_change": {
+        "dimension": "metric_role",
+        "e0_assumption": "早期互动主要是外生的需求反馈",
+        "e1_assumption": "早期互动是会被经营动作内生改变的反馈变量"
+      },
+      "shared_carrier": "同一笔记与商品组合的早期反馈指标",
+      "mechanism_steps": ["人为或策略性动作改变早期指标", "筛选系统把被改变的指标当成需求", "更多资源继续流向假赢家"],
+      "unexplained_observation": "早期高指标商品停止加速后自然成交回落。",
+      "generation_evidence_refs": ["E-GEN-1"],
+      "holdout_evidence_refs": ["E-HOLD-1"],
+      "discriminating_test": {
+        "question": "排除主动塑造的反馈后，早期排名能否继续预测自然成交？",
+        "target_mechanism": "主动塑造早期指标导致筛选系统持续向假赢家配置资源",
+        "design_type": "historical_comparison",
+        "comparison": "匹配商品与价格后，比较自然反馈组和已存在的非自然反馈记录",
+        "changed_variable": "早期反馈是否来自自然用户",
+        "measurement_window": "停止加速后的30天",
+        "e0_prediction": "两组早期排名对后续自然成交的预测力接近",
+        "e1_prediction": "自然反馈组的排名保持度和后续自然成交预测力更高",
+        "distinguishing_observation": "停止加速后的排名保持度与30日自然成交",
+        "invalidation_condition": "控制商品、价格和时点后两组预测力没有差异",
+        "directness": "direct",
+        "safety_status": "safe",
+        "execution_binding": {
+          "mechanism_variable": "早期反馈是否来自自然用户",
+          "data_evidence_refs": ["E-HOLD-1"],
+          "required_granularity": "daily",
+          "evaluation_window": {"start": "2026-01-01", "end": "2026-01-03"},
+          "measurement": {
+            "kind": "group_mean_difference",
+            "field": "retention_30d",
+            "group_field": "feedback_origin",
+            "group_a": "natural",
+            "group_b": "shaped"
+          },
+          "e0_predicate": {"operator": "abs_lte", "value": 0.1},
+          "e1_predicate": {"operator": "gt", "value": 0.2}
+        }
+      },
+      "decision_delta": "先验证信号来源和持续性，再决定是否放大赢家。",
+      "failure_conditions": ["没有信号来源记录", "商品与价格无法匹配"]
+    },
+    {
+      "candidate_id": "E1-REPHRASE",
+      "source_operator": "shared_carrier",
+      "claim": "复制提高速度也增加风险。",
+      "core_mechanism": "复制内容导致风险增加",
+      "structural_change": {
+        "dimension": "shared_carrier",
+        "e0_assumption": "复制提高速度也增加风险",
+        "e1_assumption": "复制提高速度也增加风险"
+      },
+      "shared_carrier": "内容",
+      "mechanism_steps": ["复制内容", "风险增加"],
+      "unexplained_observation": "没有新增观察。",
+      "generation_evidence_refs": ["E-GEN-2"],
+      "holdout_evidence_refs": [],
+      "discriminating_test": {
+        "question": "复制是否增加风险？",
+        "target_mechanism": "复制内容导致风险增加",
+        "design_type": "holdout_review",
+        "comparison": "比较复制前后",
+        "changed_variable": "复制程度",
+        "measurement_window": "30天",
+        "e0_prediction": "复制更多时风险增加",
+        "e1_prediction": "复制更多时风险增加",
+        "distinguishing_observation": "风险变化",
+        "invalidation_condition": "风险没有增加",
+        "directness": "direct",
+        "safety_status": "safe",
+        "execution_binding": {
+          "mechanism_variable": "复制程度",
+          "data_evidence_refs": [],
+          "required_granularity": "daily",
+          "evaluation_window": {"start": "2026-01-01", "end": "2026-01-30"},
+          "measurement": {"kind": "group_rate_difference", "field": "risk"},
+          "e0_predicate": {"operator": "gt", "value": 0},
+          "e1_predicate": {"operator": "gt", "value": 0}
+        }
+      },
+      "decision_delta": "继续要求降低复制风险。",
+      "failure_conditions": ["无法测量复制程度"]
+    },
+    {
+      "candidate_id": "E1-SELECTION",
+      "source_operator": "selection_process",
+      "claim": "看似有效的模板可能只是高频试验后只展示赢家造成的选择结果。",
+      "core_mechanism": "只展示高频试验的赢家导致观察者高估模板单次效果",
+      "structural_change": {
+        "dimension": "selection_process",
+        "e0_assumption": "成功模板本身提高单次成功概率",
+        "e1_assumption": "增加试验次数提高至少出现一个赢家的概率"
+      },
+      "shared_carrier": "同一批内容试验及其被保留或隐藏的结果",
+      "mechanism_steps": ["增加发布与组合测试次数", "只保留表现最高的少数赢家", "观察者高估模板的单次效果"],
+      "unexplained_observation": "案例只展示赢家而缺少全部发布分母。",
+      "generation_evidence_refs": ["E-GEN-1", "E-GEN-2"],
+      "holdout_evidence_refs": [],
+      "discriminating_test": {
+        "question": "固定发布数量后，模板是否仍提高单篇结果分布？",
+        "target_mechanism": "只展示高频试验的赢家导致观察者高估模板单次效果",
+        "design_type": "active_experiment",
+        "comparison": "同一商品和发布数量下比较模板组与原创组的全部帖子",
+        "changed_variable": "内容结构是否来自成功模板",
+        "measurement_window": "发布后30天",
+        "e0_prediction": "模板组的中位数和上分位结果都更高",
+        "e1_prediction": "固定试验次数后两组中位数接近，赢家差异主要来自极值波动",
+        "distinguishing_observation": "全部帖子结果分布而非只看最高值",
+        "invalidation_condition": "模板组在固定次数后仍稳定提高中位数",
+        "directness": "direct",
+        "safety_status": "safe",
+        "execution_binding": {
+          "mechanism_variable": "内容结构是否来自成功模板",
+          "data_evidence_refs": [],
+          "required_granularity": "daily",
+          "evaluation_window": {"start": "2026-01-01", "end": "2026-01-30"},
+          "measurement": {
+            "kind": "group_median_difference",
+            "field": "outcome",
+            "group_field": "content_structure",
+            "group_a": "template",
+            "group_b": "original"
+          },
+          "e0_predicate": {"operator": "gt", "value": 0.2},
+          "e1_predicate": {"operator": "abs_lte", "value": 0.1}
+        }
+      },
+      "decision_delta": "用完整发布分母评价模板，不再用单个赢家决定扩量。",
+      "failure_conditions": ["无法保留全部失败帖子", "两组发布数量不同"]
+    }
+  ]
+}

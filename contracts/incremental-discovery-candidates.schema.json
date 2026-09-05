@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/incremental-discovery-candidates.schema.json",
+  "title": "Data Lens Incremental Discovery Candidates 0.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "decision_question", "native_first_pass", "search", "candidates"],
+  "properties": {
+    "contract_version": {"const": "data-lens-incremental-discovery-candidates/0.2"},
+    "decision_question": {"type": "string", "minLength": 1},
+    "native_first_pass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline_id", "capture_mode", "captured_before_engine", "core_problem", "mechanism", "evidence_refs", "competing_explanations", "predictions", "retained_findings", "decision", "unresolved_observations"],
+      "properties": {
+        "baseline_id": {"type": "string", "minLength": 1},
+        "capture_mode": {"enum": ["pre_engine_first_pass", "external_raw_baseline"]},
+        "captured_before_engine": {"const": true},
+        "core_problem": {"type": "string", "minLength": 1},
+        "mechanism": {"type": "string", "minLength": 1},
+        "evidence_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "competing_explanations": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "predictions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "retained_findings": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "decision": {"type": "string", "minLength": 1},
+        "unresolved_observations": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "search": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_generation_pass", "operators_attempted"],
+      "properties": {
+        "candidate_generation_pass": {"type": "string", "minLength": 1},
+        "operators_attempted": {"type": "array", "minItems": 1, "maxItems": 6, "uniqueItems": true, "items": {"enum": ["causal_direction", "feedback_location", "analysis_level", "shared_carrier", "decision_objective", "stage_shift", "selection_process", "metric_role", "cost_transfer", "incentive_response"]}}
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidate_id", "source_operator", "claim", "core_mechanism", "structural_change", "shared_carrier", "mechanism_steps", "unexplained_observation", "generation_evidence_refs", "holdout_evidence_refs", "discriminating_test", "decision_delta", "failure_conditions"],
+        "properties": {
+          "candidate_id": {"type": "string", "minLength": 1},
+          "source_operator": {"enum": ["causal_direction", "feedback_location", "analysis_level", "shared_carrier", "decision_objective", "stage_shift", "selection_process", "metric_role", "cost_transfer", "incentive_response"]},
+          "claim": {"type": "string", "minLength": 1},
+          "core_mechanism": {"type": "string", "minLength": 1},
+          "structural_change": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["dimension", "e0_assumption", "e1_assumption"],
+            "properties": {
+              "dimension": {"enum": ["causal_direction", "feedback_location", "analysis_level", "shared_carrier", "decision_objective", "stage_shift", "selection_process", "metric_role", "cost_transfer", "incentive_response"]},
+              "e0_assumption": {"type": "string", "minLength": 1},
+              "e1_assumption": {"type": "string", "minLength": 1}
+            }
+          },
+          "shared_carrier": {"type": "string", "minLength": 1},
+          "mechanism_steps": {"type": "array", "minItems": 2, "items": {"type": "string", "minLength": 1}},
+          "unexplained_observation": {"type": "string", "minLength": 1},
+          "generation_evidence_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "holdout_evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "discriminating_test": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["question", "target_mechanism", "design_type", "comparison", "changed_variable", "measurement_window", "e0_prediction", "e1_prediction", "distinguishing_observation", "invalidation_condition", "directness", "safety_status", "execution_binding"],
+            "properties": {
+              "question": {"type": "string", "minLength": 1},
+              "target_mechanism": {"type": "string", "minLength": 1},
+              "design_type": {"enum": ["active_experiment", "natural_experiment", "historical_comparison", "holdout_review", "simulation"]},
+              "comparison": {"type": "string", "minLength": 1},
+              "changed_variable": {"type": "string", "minLength": 1},
+              "measurement_window": {"type": "string", "minLength": 1},
+              "e0_prediction": {"type": "string", "minLength": 1},
+              "e1_prediction": {"type": "string", "minLength": 1},
+              "distinguishing_observation": {"type": "string", "minLength": 1},
+              "invalidation_condition": {"type": "string", "minLength": 1},
+              "directness": {"enum": ["direct", "partial"]},
+              "safety_status": {"enum": ["safe", "requires_authorization", "prohibited"]},
+              "execution_binding": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["mechanism_variable", "data_evidence_refs", "required_granularity", "evaluation_window", "measurement", "e0_predicate", "e1_predicate"],
+                "properties": {
+                  "mechanism_variable": {"type": "string", "minLength": 1},
+                  "data_evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+                  "required_granularity": {"enum": ["tick", "intraday_1m", "intraday_5m", "intraday_15m", "intraday_30m", "intraday_60m", "daily", "weekly", "monthly", "quarterly", "yearly"]},
+                  "evaluation_window": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["start", "end"],
+                    "properties": {
+                      "start": {"type": "string", "minLength": 1},
+                      "end": {"type": "string", "minLength": 1}
+                    }
+                  },
+                  "measurement": {"type": "object", "minProperties": 1},
+                  "e0_predicate": {"type": "object", "minProperties": 1},
+                  "e1_predicate": {"type": "object", "minProperties": 1}
+                }
+              }
+            }
+          },
+          "decision_delta": {"type": "string", "minLength": 1},
+          "failure_conditions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    }
+  }
+}

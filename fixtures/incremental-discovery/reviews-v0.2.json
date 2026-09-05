@@ -1,0 +1,92 @@
+{
+  "contract_version": "data-lens-incremental-discovery-reviews/0.2",
+  "decision_question": "这套方法真正依赖什么增长逻辑，最关键的问题是什么？",
+  "experiment_results": [
+    {
+      "contract_version": "data-lens-hypothesis-experiment-result/0.2",
+      "experiment_id": "EXP-FEEDBACK-1",
+      "decision_question": "这套方法真正依赖什么增长逻辑，最关键的问题是什么？",
+      "mode": "hypothesis_comparison",
+      "candidate_id": "E1-METRIC",
+      "target_mechanism": "主动塑造早期指标导致筛选系统持续向假赢家配置资源",
+      "data_profile": {"kind": "synthetic_fixture", "row_count": 6},
+      "execution_status": "completed",
+      "errors": [],
+      "direct_binding": {
+        "mechanism_bound": true,
+        "mechanism_variable_bound": true,
+        "valid": true
+      },
+      "baseline_hypothesis_id": "E0",
+      "candidate_hypothesis_id": "E1-METRIC",
+      "hypotheses": [
+        {
+          "hypothesis_id": "E0",
+          "statement": "两组早期排名对后续自然成交的预测力接近",
+          "prediction": {"operator": "abs_lte", "value": 0.1}
+        },
+        {
+          "hypothesis_id": "E1-METRIC",
+          "statement": "自然反馈组的排名保持度和后续自然成交预测力更高",
+          "prediction": {"operator": "gt", "value": 0.2}
+        }
+      ],
+      "test_binding": {
+        "changed_variable": "早期反馈是否来自自然用户",
+        "measurement_window": "停止加速后的30天",
+        "distinguishing_observation": "停止加速后的排名保持度与30日自然成交"
+      },
+      "execution_binding": {
+        "mechanism_variable": "早期反馈是否来自自然用户",
+        "data_evidence_refs": ["E-HOLD-1"],
+        "required_granularity": "daily",
+        "available_granularity": "daily",
+        "evaluation_window": {"start": "2026-01-01", "end": "2026-01-03"},
+        "measurement": {
+          "kind": "group_mean_difference",
+          "field": "retention_30d",
+          "group_field": "feedback_origin",
+          "group_a": "natural",
+          "group_b": "shaped"
+        },
+        "hypothesis_predictions": {
+          "E0": {"operator": "abs_lte", "value": 0.1},
+          "E1-METRIC": {"operator": "gt", "value": 0.2}
+        }
+      },
+      "window": {
+        "declared_start": "2026-01-01",
+        "declared_end": "2026-01-03",
+        "included_row_count": 6,
+        "excluded_outside_window_count": 0,
+        "invalid_time_row_count": 0,
+        "window_expanded": false
+      },
+      "measurement": {
+        "kind": "group_mean_difference",
+        "value": 0.5,
+        "group_a": {"value": 0.75, "n": 3},
+        "group_b": {"value": 0.25, "n": 3},
+        "difference_definition": "group_a_minus_group_b"
+      },
+      "prediction_matches": {"E0": false, "E1-METRIC": true},
+      "supported_hypothesis_ids": ["E1-METRIC"],
+      "discriminated": true,
+      "evidence_direction": "supports_e1"
+    }
+  ],
+  "reviews": [
+    {
+      "candidate_id": "E1-METRIC",
+      "reviewer_pass": "holdout-pass-python-1",
+      "structure_status": "distinct",
+      "prediction_status": "divergent",
+      "novelty_status": "new_to_e0",
+      "mechanism_test_status": "direct",
+      "decision_status": "changes",
+      "experiment_result_id": "EXP-FEEDBACK-1",
+      "review_evidence_refs": ["E-HOLD-1"],
+      "rationale": "独立复核确认实验直接比较反馈来源，结果方向由 Python 计算。"
+    }
+  ]
+}

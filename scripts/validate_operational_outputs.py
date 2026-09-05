@@ -273,6 +273,7 @@ def validate(
     platform_table_count = 0
     formula_count = 0
     reconciliation_count = 0
+    reconciliation_paths: set[str] = set()
     formula_error_cells: list[str] = []
     private_path_cells: list[str] = []
     full_hash_cells: list[str] = []
@@ -355,6 +356,7 @@ def validate(
                     reconciliation_count += 1
                     locator = str(row[positions["workbook_locator"]] or "").strip()
                     pointer = str(row[positions["analysis_path"]] or "").strip()
+                    reconciliation_paths.add(pointer)
                     try:
                         target_sheet_name, target_cell = locator.rsplit("!", 1)
                         target_sheet_name = target_sheet_name.strip("'")
@@ -376,6 +378,14 @@ def validate(
             errors.append("workbook_reconciliation_sheet_not_hidden")
         if reconciliation_count == 0:
             errors.append("workbook_reconciliation_has_no_checks")
+
+    temporal_requirements = (
+        ("subphase_summary", analysis.get("subphase_summary")),
+        ("change_point_candidates", analysis.get("change_point_candidates")),
+    )
+    for field, values in temporal_requirements:
+        if values and not any(pointer.startswith(f"/{field}") for pointer in reconciliation_paths):
+            errors.append(f"workbook_omits_temporal_analysis:{field}")
 
     workbook_formula.close()
     workbook_values.close()

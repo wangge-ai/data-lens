@@ -1,0 +1,20 @@
+{
+  "design": "randomized",
+  "binding": {
+    "analysis_unit": "店铺-月",
+    "outcome_name": "前台利润",
+    "outcome_field": "front_profit",
+    "intervention": "将推广营业额占比降低5个百分点",
+    "comparator": "推广占比保持不变",
+    "group_field": "promo_policy_arm",
+    "intervention_value": "reduce_5pp",
+    "comparator_value": "unchanged",
+    "assignment_mechanism": "randomized",
+    "identification_strategy": "randomized",
+    "estimand": "持续经营店铺两个月前台利润平均处理效应",
+    "estimator": "group_mean_difference"
+  },
+  "assignment_unit": "store-month",
+  "arms": ["reduced promotion share", "unchanged promotion share"],
+  "allocation_source": "synthetic regression fixture"
+}

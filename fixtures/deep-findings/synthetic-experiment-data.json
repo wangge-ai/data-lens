@@ -1,0 +1,6 @@
+[
+  {"article_id": "A1", "publish_date": "2026-01-01", "opening_arm": "result_first", "read_through": 0.54},
+  {"article_id": "A2", "publish_date": "2026-01-02", "opening_arm": "result_first", "read_through": 0.62},
+  {"article_id": "B1", "publish_date": "2026-01-03", "opening_arm": "steps_first", "read_through": 0.49},
+  {"article_id": "B2", "publish_date": "2026-01-04", "opening_arm": "steps_first", "read_through": 0.51}
+]

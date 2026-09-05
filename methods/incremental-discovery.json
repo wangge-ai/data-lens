@@ -1,0 +1,82 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.incremental_discovery",
+  "version": "0.4.0",
+  "status": "experimental",
+  "name": "增量发现引擎",
+  "purpose": "Preserve a host model's pre-engine explanation, generate structurally different candidates with divergent predictions, and use a separate holdout review to determine whether any candidate adds testable or validated decision value.",
+  "question_types": ["problem_discovery", "explanation", "decision", "planning"],
+  "accepted_units": ["native_first_pass", "verified_observation", "mechanism_candidate", "discriminating_test"],
+  "input_shapes": ["original_decision_question", "verified_evidence_cards", "native_first_pass", "prepared_mode_brief", "increment_candidates_with_frozen_execution_binding", "external_raw_baseline", "holdout_reviews"],
+  "eligibility_checks": [
+    "the source scope and analysis unit are already explicit",
+    "a pre-engine first pass has been frozen before reading the incremental engine reference",
+    "the task benefits from discovering a structurally different explanation rather than only improving evidence presentation"
+  ],
+  "assumptions": [
+    "a pre-engine first pass inside an invoked Skill is not a true raw-model baseline",
+    "strict paired attribution uses the real raw Codex final answer as an external baseline only after both isolated candidates finish",
+    "candidate generation and holdout review occur in separate passes",
+    "post-reveal rebasing reuses the exact compiled candidate list from the frozen Skill ledger",
+    "version 0.1 review records remain readable for compatibility but current executions use measured 0.2 experiment results",
+    "a different label or more cautious wording is not analysis increment",
+    "an incremental candidate still requires the existing finding-adoption process"
+  ],
+  "human_gates": [],
+  "implementation": {
+    "runtime": "hybrid",
+    "entrypoint": "references/incremental-discovery-engine.md",
+    "network_policy": "deny",
+    "optional_dependencies": []
+  },
+  "outputs": [
+    "preserved E0 baseline snapshot",
+    "structurally distinct E1 candidates with divergent predictions",
+    "separate holdout review with Python-derived experiment direction and candidate-level outcome",
+    "post-reveal rebased ledger that keeps the original generation baseline and frozen candidates",
+    "validated_increment, testable_increment, no_increment, or review_incomplete status",
+    "an explicit final-report mode that excludes E1 when review is incomplete or no increment is found"
+  ],
+  "diagnostics": [
+    "baseline incomplete",
+    "candidate E0 differs from the prepared baseline brief",
+    "post-reveal workflow regenerated candidates instead of rebasing the frozen ledger",
+    "candidate already exists anywhere in the preserved E0 findings",
+    "strict paired attribution compared against the Skill run's own first pass instead of the external raw final answer",
+    "candidate only rephrases E0",
+    "E0 and E1 predict the same observation",
+    "the experiment target does not match the candidate's declared core mechanism",
+    "generation and holdout evidence overlap",
+    "independent review finds that the proposed test does not directly distinguish the mechanism",
+    "experiment result is missing, targets another candidate, expands the window, or uses insufficient data granularity",
+    "experiment evidence, exact window, measurement, granularity, or numeric predicates differ from the frozen candidate",
+    "review is incomplete and the final report must remain E0-only with a no-increment notice",
+    "test is prohibited or review evidence is outside the declared holdout",
+    "no candidate changes or refines the decision"
+  ],
+  "evidence_requirements": [
+    "locatable verified evidence for E0 and candidate generation",
+    "disjoint holdout evidence and a completed direct experiment for a validated increment",
+    "the same test condition with explicit E0 and E1 predictions",
+    "a decision delta and at least one failure condition"
+  ],
+  "allowed_claims": [
+    "a candidate is structurally different and ready for semantic review",
+    "holdout evidence supports a bounded analysis increment",
+    "a candidate remains testable but unvalidated",
+    "the engine produced no analysis increment and E0 should be preserved"
+  ],
+  "forbidden_claims": [
+    "mechanical validation proves semantic novelty",
+    "a longer or more cautious answer is deeper",
+    "the generating pass may rewrite its prediction after seeing holdout evidence",
+    "a tangential experiment directly tests the core mechanism",
+    "a dangerous or deceptive action may be performed to validate a hypothesis",
+    "an incomplete or invalid review may be synthesized as an incremental management conclusion",
+    "an incremental candidate bypasses the existing finding-adoption chain"
+  ],
+  "validation": {
+    "status": "fixture_only",
+    "fixtures": ["fixtures/incremental-discovery"]
+  }
+}

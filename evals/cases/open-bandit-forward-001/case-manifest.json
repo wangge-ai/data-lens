@@ -1,0 +1,76 @@
+{
+  "case_id": "open-bandit-forward-001",
+  "status": "complete_no_increment",
+  "material": {
+    "source_repository": "https://github.com/st-tech/zr-obp",
+    "commit": "8cbd5fa4558b7ad2ba4781546d6604e4cc3e07c4",
+    "local_material_published": false,
+    "selection": [
+      "README.md",
+      "README_JN.md",
+      "bts/all/*.csv",
+      "bts/men/*.csv",
+      "bts/women/*.csv",
+      "random/all/*.csv",
+      "random/men/*.csv",
+      "random/women/*.csv"
+    ]
+  },
+  "runs": {
+    "raw_codex": {
+      "prompt": "raw-codex-prompt.md",
+      "status": "complete",
+      "artifact_published": false
+    },
+    "codex_data_lens": {
+      "prompt": "data-lens-prompt.md",
+      "status": "complete",
+      "artifact_published": false
+    },
+    "workbuddy_data_lens": {
+      "prompt": "workbuddy-prompt.md",
+      "status": "complete_artifact_with_cli_finalization_error",
+      "host": "WorkBuddy 5.4.7 / CodeBuddy Code 2.132.0",
+      "artifact_published": false,
+      "skill_invocation_verified": true,
+      "forbidden_read_detected": false,
+      "run_record": "workbuddy-run-record.json",
+      "terminal_error": "CodeBuddy output finalization failed after the complete report was written: TypeError reading split"
+    }
+  },
+  "cross_host_attempts": {
+    "claude_code": {
+      "version": "2.1.220",
+      "status": "failed_before_model_input",
+      "attempts": 2,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reason": "API connection refused"
+    }
+  },
+  "blind_review": {
+    "status": "blind_scores_frozen",
+    "artifacts_published": false,
+    "scores": {
+      "A": 89,
+      "B": 91,
+      "C": 36
+    },
+    "material_gain_signal": false,
+    "reveal": "reveal.json"
+  },
+  "post_reveal": {
+    "prompt": "post-reveal-review-prompt.md",
+    "status": "complete",
+    "artifacts_published": false,
+    "codex_skill_increment": "testable_increment",
+    "workbuddy_skill_increment": "no_increment",
+    "cross_host_stability": "no_increment",
+    "overall_result": "no_increment"
+  },
+  "claim_boundary": {
+    "stable_superiority_proven": false,
+    "cross_host_stability_proven": false,
+    "private_paths_or_task_ids_published": false
+  }
+}

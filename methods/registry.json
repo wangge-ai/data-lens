@@ -1,6 +1,6 @@
 {
   "contract_version": "data-lens-method-registry/1.0",
-  "skill_version": "0.8.1",
+  "skill_version": "0.9.0-dev.12",
   "methods": [
     {"method_id": "data_lens.inventory_profile", "version": "1.0.0", "manifest": "inventory-profile.json"},
     {"method_id": "data_lens.nested_project_profile", "version": "1.0.0", "manifest": "nested-project-profile.json"},
@@ -15,18 +15,25 @@
     {"method_id": "data_lens.corpus_scope_gate", "version": "1.0.0", "manifest": "corpus-scope-gate.json"},
     {"method_id": "data_lens.evidence_gated_angle_discovery", "version": "0.2.0", "manifest": "evidence-gated-angle-discovery.json"},
     {"method_id": "data_lens.verified_evidence_synthesis_context", "version": "0.2.0", "manifest": "verified-evidence-synthesis-context.json"},
-    {"method_id": "data_lens.evidence_gated_deep_findings", "version": "1.0.0", "manifest": "evidence-gated-deep-findings.json"},
+    {"method_id": "data_lens.evidence_gated_deep_findings", "version": "1.3.0", "manifest": "evidence-gated-deep-findings.json"},
     {"method_id": "data_lens.deep_finding_synthesis_context", "version": "1.0.0", "manifest": "deep-finding-synthesis-context.json"},
     {"method_id": "data_lens.cognitive_engine_router", "version": "0.2.0", "manifest": "cognitive-engine-router.json"},
     {"method_id": "data_lens.contradiction_analysis", "version": "0.2.0", "manifest": "contradiction-analysis.json"},
+    {"method_id": "data_lens.incremental_discovery", "version": "0.4.0", "manifest": "incremental-discovery.json"},
+    {"method_id": "data_lens.hypothesis_falsification", "version": "0.4.0", "manifest": "hypothesis-falsification.json"},
+    {"method_id": "data_lens.deep_analysis_question", "version": "0.4.0", "manifest": "deep-analysis-question.json"},
+    {"method_id": "data_lens.deep_data_probes", "version": "0.2.0", "manifest": "deep-data-probes.json"},
+    {"method_id": "data_lens.deep_analysis_execution", "version": "0.2.0", "manifest": "deep-analysis-execution.json"},
     {"method_id": "data_lens.operational_tables", "version": "1.0.0", "manifest": "operational-tables.json"},
     {"method_id": "data_lens.multimodal_inventory", "version": "1.0.0", "manifest": "multimodal-inventory.json"},
     {"method_id": "data_lens.tesseract_ocr", "version": "0.1.1", "manifest": "tesseract-ocr.json"},
-    {"method_id": "data_lens.pdf_page_ocr", "version": "0.1.0", "manifest": "pdf-page-ocr.json"},
+    {"method_id": "data_lens.paddleocr_local", "version": "0.1.0", "manifest": "paddleocr-local.json"},
+    {"method_id": "data_lens.pdf_page_ocr", "version": "0.2.0", "manifest": "pdf-page-ocr.json"},
     {"method_id": "data_lens.pdf_structure_profile", "version": "0.1.0", "manifest": "pdf-structure-profile.json"},
     {"method_id": "data_lens.video_frame_evidence", "version": "0.1.0", "manifest": "video-frame-evidence.json"},
-    {"method_id": "data_lens.local_whisper_transcription", "version": "0.1.0", "manifest": "local-whisper-transcription.json"},
+    {"method_id": "data_lens.local_whisper_transcription", "version": "0.2.0", "manifest": "local-whisper-transcription.json"},
     {"method_id": "data_lens.local_vector_retrieval", "version": "1.0.0", "manifest": "local-vector-retrieval.json"},
-    {"method_id": "data_lens.r_descriptive_summary", "version": "0.1.0", "manifest": "r-descriptive-summary.json"}
+    {"method_id": "data_lens.r_descriptive_summary", "version": "0.1.1", "manifest": "r-descriptive-summary.json"},
+    {"method_id": "data_lens.r_time_trend_competition", "version": "0.1.0", "manifest": "r-time-trend-competition.json"}
   ]
 }

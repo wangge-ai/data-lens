@@ -4,7 +4,10 @@ import argparse
 import importlib.util
 import json
 import shutil
+import sys
 from typing import Any
+
+from runtime_discovery import probe_r_runtime
 
 
 PYTHON_MODULES = {
@@ -20,7 +23,6 @@ PYTHON_MODULES = {
 }
 
 EXECUTABLES = {
-    "Rscript": ("r_runtime", True, True, "scripts/r_method_runner.py"),
     "ffprobe": ("audio_video_metadata", True, True, "scripts/multimodal_inventory.py"),
     "ffmpeg": ("video_frame_extraction", True, True, "scripts/video_evidence.py"),
     "whisper": ("local_transcription", True, True, "scripts/transcribe_media.py"),
@@ -73,6 +75,15 @@ def detect() -> dict[str, Any]:
         )
         for module, (capability, wired, fixture_validated, entrypoint) in PYTHON_MODULES.items()
     }
+    paddle_installed = importlib.util.find_spec("paddleocr") is not None and importlib.util.find_spec("paddle") is not None
+    optional_python["paddle_ocr"] = capability_record(
+        paddle_installed,
+        "module",
+        "paddleocr+paddle",
+        True,
+        True,
+        "scripts/ocr_evidence.py",
+    )
     executables = {
         capability: capability_record(
             shutil.which(executable) is not None,
@@ -83,6 +94,20 @@ def detect() -> dict[str, Any]:
             entrypoint,
         )
         for executable, (capability, wired, fixture_validated, entrypoint) in EXECUTABLES.items()
+    }
+    r_runtime = probe_r_runtime()
+    executables["r_runtime"] = {
+        **capability_record(
+            r_runtime["available"],
+            "command",
+            r_runtime["command"],
+            True,
+            True,
+            "scripts/r_method_runner.py",
+        ),
+        "discovery_source": r_runtime["discovery_source"],
+        "version": r_runtime.get("version"),
+        "diagnostic": r_runtime.get("diagnostic"),
     }
     return {
         "contract_version": "data-lens-capabilities/2.0",
@@ -95,7 +120,7 @@ def detect() -> dict[str, Any]:
                 True,
                 "scripts/data_lens.py",
                 production_ready=True,
-            )
+            ) | {"executable": sys.executable, "version": sys.version.split()[0], "prefix": sys.prefix}
         },
         "optional_python": optional_python,
         "optional_executables": executables,

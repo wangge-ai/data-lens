@@ -1,0 +1,70 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.deep_analysis_question",
+  "version": "0.4.0",
+  "status": "experimental",
+  "name": "深度分析问题编译器",
+  "purpose": "Separate description, explanation, prediction, intervention-effect estimation, and action selection; compile the decision question and observed data shape into independent analytical layers, claim boundaries, missing identification evidence, and executable probe recommendations.",
+  "question_types": ["description", "comparison", "diagnosis", "explanation", "prediction", "causal_effect", "decision"],
+  "accepted_units": ["decision_question", "analysis_unit", "outcome", "exposure", "time_index", "segment", "decision_option"],
+  "input_shapes": ["deep_analysis_question_spec", "verified_evidence_cards"],
+  "eligibility_checks": [
+    "the source scope and analysis unit are known",
+    "the task requires more than a simple lookup, formula, or summary",
+    "at least one observable outcome is named"
+  ],
+  "assumptions": [
+    "analysis depth is determined by the strongest supported claim, not method complexity or report length",
+    "description, prediction, causal explanation, and decision optimization are different objectives",
+    "causal identification precedes estimator choice",
+    "time-dependent prediction must be evaluated without future leakage and with paired uncertainty for model differences",
+    "data-driven subgroup discovery must use non-overlapping units for confirmation",
+    "logged-policy evaluation must expose propensity overlap and sensitivity to weight handling",
+    "design evidence must identify the same unit, outcome, intervention, comparator, group mapping, and estimand as the compiled question"
+  ],
+  "human_gates": ["review the causal graph, identifying assumptions, intervention definition, planned estimator, and decision utility when those layers are requested", "confirm that executed identification-check evidence is separate from the experiment plan and semantically bound to the exact check"],
+  "implementation": {
+    "runtime": "hybrid",
+    "entrypoint": "scripts/compile_deep_analysis_question.py",
+    "network_policy": "deny",
+    "optional_dependencies": []
+  },
+  "outputs": [
+    "independent readiness for measurement, descriptive, temporal, heterogeneity, mechanism, causal, predictive, and decision layers",
+    "claim-family permissions without an overall depth score",
+    "frozen honest or prespecified heterogeneity, direct-mechanism, uncertainty-aware predictive competition, causal, and scenario or logged-policy targets",
+    "the source question specification needed for fresh recompilation before advanced finding adoption",
+    "blocked assumptions and missing evidence",
+    "bounded executable probe recommendations"
+  ],
+  "diagnostics": [
+    "unstable or unobserved outcome",
+    "unknown temporal ordering",
+    "observational causal question lacks an identification strategy or confounder review",
+    "time-dependent prediction uses random splitting, in-sample accuracy, or lacks paired-loss uncertainty",
+    "data-driven subgroup discovery reuses estimation units",
+    "decision recommendation lacks alternatives, value, costs, constraints, overlap diagnostics, sensitivity, or a threshold"
+  ],
+  "evidence_requirements": [
+    "verified evidence for the outcome and declared data readiness",
+    "explicit intervention, comparator, time zero, follow-up, and estimand for causal questions",
+    "a future-safe holdout design for predictive questions",
+    "decision alternatives and downside for action selection"
+  ],
+  "allowed_claims": [
+    "a named analytical layer is ready, conditional, blocked, or not requested",
+    "the current evidence supports only descriptive, associational, mechanism-hypothesis, predictive, causal, or decision claims as separately stated",
+    "a particular missing observation or assumption prevents a stronger claim"
+  ],
+  "forbidden_claims": [
+    "an overall depth score hides a blocked analytical layer",
+    "a complex estimator upgrades association to causation",
+    "predictive accuracy proves an explanation",
+    "a causal estimate is ready without a well-defined intervention and identification strategy",
+    "a decision follows from an estimate without value, cost, constraints, and a threshold"
+  ],
+  "validation": {
+    "status": "regression_tested",
+    "fixtures": ["fixtures/deep-analysis-question"]
+  }
+}

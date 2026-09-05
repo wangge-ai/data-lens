@@ -1,0 +1,68 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.hypothesis_falsification",
+  "version": "0.4.0",
+  "status": "experimental",
+  "name": "假设证伪实验运行器",
+  "purpose": "Execute atomized claim checks and direct E0/E1 discriminating measurements without letting a model replace failed dimensions or measured outcomes with a favorable overall label.",
+  "question_types": ["forecast_evaluation", "mechanism_comparison", "causal_calibration", "decision"],
+  "accepted_units": ["atomic_claim_component", "tabular_observation", "time_series_observation", "competing_prediction"],
+  "input_shapes": ["hypothesis_experiment_json", "csv_rows", "json_rows"],
+  "eligibility_checks": [
+    "the model has stated a falsifiable claim or at least two predictions on one measured outcome",
+    "the evaluation window and required data granularity are declared before execution",
+    "a comparison experiment names the same core mechanism and changed or isolated variable"
+  ],
+  "assumptions": [
+    "the supplied observations and declared granularity accurately describe the source data",
+    "mechanical name binding cannot replace independent semantic review of experiment directness",
+    "a matching prediction does not by itself prove causality"
+  ],
+  "human_gates": [],
+  "implementation": {
+    "runtime": "python",
+    "entrypoint": "scripts/run_hypothesis_experiment.py",
+    "network_policy": "deny",
+    "optional_dependencies": []
+  },
+  "outputs": [
+    "dimension-level direction, time, point, path, and invalidation outcomes without a total verdict",
+    "exact-window and granularity diagnostics",
+    "computed metric and E0/E1 prediction matches",
+    "bounded difference-in-differences, subgroup heterogeneity, and rolling-origin baseline diagnostics",
+    "optional advanced-result binding to one executed component, target, validation type, method, design evidence, and layer-specific design fields",
+    "an executable binding that echoes holdout evidence, exact window, granularity, measurement, and numeric predicates",
+    "supports_e0, supports_e1, mixed, not_tested, or misalignment result"
+  ],
+  "diagnostics": [
+    "data is coarser than the claim requires",
+    "declared evaluation window contains no usable observations",
+    "claim dimension was declared without a component",
+    "experiment target differs from the candidate core mechanism",
+    "changed or isolated variable differs from the mechanism variable",
+    "executed prediction or measurement definition differs from the frozen candidate test",
+    "competing predictions are identical or simultaneously match"
+  ],
+  "evidence_requirements": [
+    "read-only CSV, JSON, or inline observations",
+    "an exact inclusive evaluation window",
+    "a named measurement and machine-evaluable prediction for every scored component",
+    "separate baseline and candidate predictions for a comparison"
+  ],
+  "allowed_claims": [
+    "an individual claim component is supported, contradicted, unverifiable, triggered, or not triggered",
+    "one declared hypothesis matches the computed result under the supplied design",
+    "the experiment is inconclusive or misaligned"
+  ],
+  "forbidden_claims": [
+    "an overall aligned label may override a failed component",
+    "daily data can verify an intraday timing claim",
+    "observations outside the declared window may be added after seeing the result",
+    "a mechanically bound experiment proves semantic directness or causality",
+    "one completed measurement may be relabelled as prediction, causal effect, or decision analysis"
+  ],
+  "validation": {
+    "status": "regression_tested",
+    "fixtures": ["fixtures/hypothesis-experiment"]
+  }
+}

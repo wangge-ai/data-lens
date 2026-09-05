@@ -1,0 +1,21 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.paddleocr_local",
+  "version": "0.1.0",
+  "status": "experimental",
+  "name": "本地 PaddleOCR 候选证据提取",
+  "purpose": "使用明确指定的本地检测与识别模型，从中文、中英混排或旋转文字图片中提取带多边形位置的候选文本。",
+  "question_types": ["multimodal_evidence", "candidate_extraction"],
+  "accepted_units": ["image_full_frame"],
+  "input_shapes": ["local_image"],
+  "eligibility_checks": ["PaddleOCR and PaddlePaddle are installed locally", "detection and recognition model directories are explicit, local, non-empty, and already present", "source is a supported image", "per-image timeout is bounded"],
+  "assumptions": ["the selected local models cover the visible language and image shape", "line polygons are candidate locators rather than reviewed reading order"],
+  "human_gates": ["visually review critical text and locators", "review table structure separately before cell-level claims", "sample long-image regions rather than treating one OCR pass as complete coverage"],
+  "implementation": {"runtime": "python", "entrypoint": "scripts/ocr_evidence.py", "network_policy": "deny", "optional_dependencies": ["paddleocr", "paddlepaddle", "explicit local model directories"]},
+  "outputs": ["candidate text lines", "confidence", "polygon and bounding-box locators", "engine and API version", "review state"],
+  "diagnostics": ["dependency state", "local model path eligibility", "worker timeout and exit state", "candidate count and confidence"],
+  "evidence_requirements": ["source hash", "full-frame locator", "explicit local model source", "raw normalized candidates retained"],
+  "allowed_claims": ["the local PaddleOCR models produced the located text candidates under the recorded run"],
+  "forbidden_claims": ["OCR candidate text is a verified fact", "text-line polygons preserve table structure", "the adapter downloaded or selected a model automatically", "successful OCR proves full long-image coverage"],
+  "validation": {"status": "regression_tested", "fixtures": ["fixtures/ocr/paddle-v3-mixed.json", "fixtures/ocr/paddle-v2-mixed.json"]}
+}

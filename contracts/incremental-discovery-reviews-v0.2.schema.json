@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/incremental-discovery-reviews-v0.2.schema.json",
+  "title": "Data Lens Incremental Discovery Reviews 0.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "decision_question", "experiment_results", "reviews"],
+  "properties": {
+    "contract_version": {"const": "data-lens-incremental-discovery-reviews/0.2"},
+    "decision_question": {"type": "string", "minLength": 1},
+    "experiment_results": {"type": "array", "items": {"type": "object"}},
+    "reviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidate_id", "reviewer_pass", "structure_status", "prediction_status", "novelty_status", "mechanism_test_status", "decision_status", "review_evidence_refs", "rationale"],
+        "properties": {
+          "candidate_id": {"type": "string", "minLength": 1},
+          "reviewer_pass": {"type": "string", "minLength": 1},
+          "structure_status": {"enum": ["distinct", "same", "unresolved"]},
+          "prediction_status": {"enum": ["divergent", "same", "untestable"]},
+          "novelty_status": {"enum": ["new_to_e0", "already_in_e0", "overlaps_e0", "unresolved"]},
+          "mechanism_test_status": {"enum": ["direct", "partial", "tangential", "unsafe"]},
+          "decision_status": {"enum": ["changes", "refines", "no_change"]},
+          "experiment_result_id": {"type": "string"},
+          "review_evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "rationale": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

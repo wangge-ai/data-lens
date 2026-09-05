@@ -1,0 +1,21 @@
+{
+  "contract_version": "data-lens-method-manifest/1.0",
+  "method_id": "data_lens.r_time_trend_competition",
+  "version": "0.1.0",
+  "status": "experimental",
+  "name": "R 时间趋势线性与非线性竞争检验",
+  "purpose": "检验 Codex 提出的稳定线性趋势解释，是否被同一起点、时间顺序留出的非线性趋势模型明显反驳。",
+  "question_types": ["description", "prediction", "mechanism_screening"],
+  "accepted_units": ["ordered_time_observation"],
+  "input_shapes": ["utf8_csv_with_time_and_value_columns"],
+  "eligibility_checks": ["Rscript and local mgcv package are available", "at least 15 complete rows and 15 distinct time points", "time points are unique or were explicitly aggregated upstream", "value is numeric and non-constant"],
+  "assumptions": ["the ordered holdout is relevant to the decision horizon", "the linear and smooth time shapes are meaningful competitors", "the paired circular-block holdout bootstrap preserves only short local dependence and is a screening uncertainty estimate"],
+  "human_gates": ["confirm time and value units before interpretation", "confirm that a time-shape comparison directly tests the stated E0/E1 explanations", "inspect omitted drivers and regime changes before adopting a mechanism"],
+  "implementation": {"runtime": "r", "entrypoint": "methods/implementations/r/time_trend_competition.R", "network_policy": "deny", "optional_dependencies": ["R >= 4.2", "mgcv"]},
+  "outputs": ["linear slope and confidence interval", "linear and smooth ordered-holdout RMSE/MAE", "paired loss difference with bootstrap interval", "model preference or inconclusive result"],
+  "diagnostics": ["row eligibility", "time uniqueness", "ordered split sizes", "mgcv availability", "model fit and finite prediction status"],
+  "evidence_requirements": ["input file hash", "explicit time and value columns", "ordered holdout results", "registered script hash"],
+  "allowed_claims": ["one declared time-shape model predicted the held-out tail better under the recorded fixture and uncertainty screen", "the observed series is or is not consistent with a stable linear trend"],
+  "forbidden_claims": ["time shape identifies a causal mechanism", "a smooth fit proves a business turning point", "the selected model can be extrapolated without a new validation horizon"],
+  "validation": {"status": "regression_tested", "fixtures": ["tests/fixtures/r_trend_competition.csv"]}
+}

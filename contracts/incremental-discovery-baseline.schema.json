@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-lens.dev/contracts/incremental-discovery-baseline.schema.json",
+  "title": "Data Lens Incremental Discovery Baseline 0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "decision_question", "native_first_pass"],
+  "properties": {
+    "contract_version": {"const": "data-lens-incremental-discovery-baseline/0.1"},
+    "decision_question": {"type": "string", "minLength": 1},
+    "coverage_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer_pass", "status", "material_findings", "omitted_material_findings"],
+      "properties": {
+        "reviewer_pass": {"type": "string", "minLength": 1},
+        "status": {"enum": ["complete", "incomplete"]},
+        "material_findings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source_locator", "baseline_text"],
+            "properties": {
+              "source_locator": {"type": "string", "minLength": 1},
+              "baseline_text": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "omitted_material_findings": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "native_first_pass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline_id", "capture_mode", "captured_before_engine", "core_problem", "mechanism", "evidence_refs", "competing_explanations", "predictions", "retained_findings", "decision", "unresolved_observations"],
+      "properties": {
+        "baseline_id": {"type": "string", "minLength": 1},
+        "capture_mode": {"enum": ["pre_engine_first_pass", "external_raw_baseline"]},
+        "captured_before_engine": {"const": true},
+        "core_problem": {"type": "string", "minLength": 1},
+        "mechanism": {"type": "string", "minLength": 1},
+        "evidence_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "competing_explanations": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "predictions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "retained_findings": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "decision": {"type": "string", "minLength": 1},
+        "unresolved_observations": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    }
+  }
+}

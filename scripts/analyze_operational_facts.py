@@ -258,12 +258,88 @@ def entity_movements(rows: list[dict[str, Any]], entity_type: str, periods: list
     }
 
 
+def normalize_coverage(rows: list[dict[str, Any]], errors: list[str]) -> list[dict[str, Any]]:
+    """Normalize per-snapshot coverage without merging unlike analysis units."""
+    normalized: list[dict[str, Any]] = []
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            errors.append(f"coverage_row_{index}_must_be_object")
+            continue
+        family = str(row.get("family") or "").strip()
+        if not family:
+            errors.append(f"coverage_row_{index}_missing_family")
+            continue
+        item: dict[str, Any] = {
+            "family": family,
+            "analysis_unit": str(row.get("analysis_unit") or "family_row").strip(),
+            "collection_date": row.get("collection_date"),
+            "schema_fingerprint": row.get("schema_fingerprint"),
+        }
+        for field in ("file_count", "row_count", "sku_count"):
+            value = safe_number(row.get(field))
+            if value is None:
+                continue
+            if value < 0 or not float(value).is_integer():
+                errors.append(f"coverage_row_{index}_{field}_must_be_non_negative_integer")
+                continue
+            item[field] = int(value)
+        if not any(field in item for field in ("file_count", "row_count", "sku_count")):
+            errors.append(f"coverage_row_{index}_has_no_count")
+        normalized.append(item)
+    return normalized
+
+
+def summarize_coverage(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Aggregate deterministic reader-facing counts by family and analysis unit.
+
+    Repeated operational exports commonly contribute one coverage row per day
+    or month.  The report needs the total rows actually analysed, not the
+    number from one arbitrary snapshot.  Family and analysis unit remain a
+    joint key so, for example, primary-category rows and leaf-category rows
+    cannot be silently combined.
+    """
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        groups[(str(row["family"]), str(row["analysis_unit"]))].append(row)
+
+    result: list[dict[str, Any]] = []
+    for (family, analysis_unit), items in sorted(groups.items()):
+        dates = sorted({
+            str(item.get("collection_date"))
+            for item in items
+            if item.get("collection_date") not in (None, "")
+        })
+        fingerprints = sorted({
+            str(item.get("schema_fingerprint"))
+            for item in items
+            if item.get("schema_fingerprint") not in (None, "")
+        })
+        summary: dict[str, Any] = {
+            "family": family,
+            "analysis_unit": analysis_unit,
+            "coverage_rows": len(items),
+            "collection_start": dates[0] if dates else None,
+            "collection_end": dates[-1] if dates else None,
+            "collection_periods": len(dates),
+            "schema_fingerprints": fingerprints,
+        }
+        for field in ("file_count", "row_count", "sku_count"):
+            values = [item[field] for item in items if field in item]
+            if values:
+                summary[field] = sum(values)
+        result.append(summary)
+    return result
+
+
 def coverage_checks(rows: list[dict[str, Any]], warnings: list[str], threshold: float) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
-    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
-        groups[str(row.get("family") or "unknown")].append(row)
-    for family, items in groups.items():
+        groups[(
+            str(row.get("family") or "unknown"),
+            str(row.get("analysis_unit") or "family_row"),
+        )].append(row)
+    for (family, analysis_unit), items in groups.items():
         items.sort(key=lambda row: str(row.get("collection_date") or ""))
         for before, after in zip(items, items[1:]):
             flags: list[str] = []
@@ -275,7 +351,8 @@ def coverage_checks(rows: list[dict[str, Any]], warnings: list[str], threshold: 
                     flags.append(f"{metric}_jump")
             if flags:
                 candidate = {
-                    "family": family, "before_date": before.get("collection_date"),
+                    "family": family, "analysis_unit": analysis_unit,
+                    "before_date": before.get("collection_date"),
                     "candidate_date": after.get("collection_date"), "flags": flags,
                     "classification": "coverage_break_candidate",
                 }
@@ -335,7 +412,10 @@ def analyze(payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         warnings.append("time_contract_missing")
     summary = summarize(daily, periods)
     comparisons = compare_periods(summary, periods)
-    coverage = coverage_checks(list(payload.get("coverage") or []), warnings, float(payload.get("coverage_jump_threshold") or 0.5))
+    coverage_rows = list(payload.get("coverage") or [])
+    normalized_coverage = normalize_coverage(coverage_rows, errors)
+    coverage_summary = summarize_coverage(normalized_coverage)
+    coverage = coverage_checks(normalized_coverage, warnings, float(payload.get("coverage_jump_threshold") or 0.5))
     promo_daily = aggregate_optional_facts(
         list(payload.get("promo_daily") or []), "promotion_date", (),
         ("promo_spend", "paid_amount_attributed", "clicks", "impressions"), errors,
@@ -371,6 +451,7 @@ def analyze(payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         "promotion_daily_summary": promo_daily,
         "inventory_snapshot_summary": inventory,
         "fulfillment_daily_summary": fulfillment,
+        "coverage_summary": coverage_summary,
         "coverage_break_candidates": coverage,
         "interpretation_order": [
             "total", "daily_trend", "stage_comparison", "platform_contribution",
@@ -387,6 +468,7 @@ def analyze(payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         "checks": {
             "platform_daily_rows": len(daily), "platforms": len(platforms), "business_dates": len(dates),
             "periods": len(periods), "coverage_break_candidates": len(coverage),
+            "coverage_claim_rows": len(coverage_summary),
             "missing_is_zero": False, "platform_dimension_present": bool(platforms),
             "decomposition_reconciled": all(
                 abs(float(row.get("paid_amount_decomposition", {}).get("reconciliation_difference") or 0)) < 0.01

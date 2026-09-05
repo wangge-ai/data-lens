@@ -1,0 +1,10 @@
+{
+  "case_id": "open-bandit-forward-001",
+  "round": "cross-host-three-candidate",
+  "mapping": {
+    "A": "raw_codex",
+    "B": "codex_data_lens",
+    "C": "workbuddy_codebuddy_data_lens"
+  },
+  "rule": "Blind evaluator must not read this file until scores and reasons are frozen."
+}

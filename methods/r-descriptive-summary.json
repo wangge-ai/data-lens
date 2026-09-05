@@ -1,14 +1,14 @@
 {
   "contract_version": "data-lens-method-manifest/1.0",
   "method_id": "data_lens.r_descriptive_summary",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "status": "experimental",
   "name": "R 数值列描述摘要",
   "question_types": ["description"],
   "accepted_units": ["table_row"],
   "input_shapes": ["csv"],
   "eligibility_checks": ["Rscript is available", "CSV has a header", "numeric columns are present"],
-  "assumptions": ["the registered R script and input CSV use compatible numeric parsing rules"],
+  "assumptions": ["the registered R script receives a UTF-8 CSV and numeric fields use R-compatible decimal notation"],
   "human_gates": ["confirm units and missing-value meaning before interpretation"],
   "implementation": {"runtime": "r", "entrypoint": "methods/implementations/r/descriptive_summary.R", "network_policy": "deny", "optional_dependencies": ["R >= 4.2"]},
   "outputs": ["per-column count", "missing count", "mean", "minimum", "maximum"],
@@ -16,5 +16,5 @@
   "evidence_requirements": ["input file hash", "column name", "method result contract"],
   "allowed_claims": ["descriptive values computed from eligible rows"],
   "forbidden_claims": ["descriptive difference proves causality", "missing values are zeros"],
-  "validation": {"status": "fixture_only", "fixtures": ["tests/fixtures/r_numeric.csv"]}
+  "validation": {"status": "regression_tested", "fixtures": ["tests/fixtures/r_numeric.csv", "tests/fixtures/r_utf8_numeric.csv"]}
 }

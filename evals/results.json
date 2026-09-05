@@ -30,5 +30,26 @@
     "raw_host_baseline_complete": true,
     "comparable_data_lens_0_8_1_pair_complete": false,
     "public_score_reported": false
+  },
+  "forward_cross_host_cases": [
+    {
+      "case_id": "open-bandit-forward-001",
+      "data_lens_snapshot": "0.9.0-dev.7",
+      "raw_codex_score": 89.0,
+      "codex_data_lens_score": 91.0,
+      "workbuddy_codebuddy_data_lens_score": 36.0,
+      "codex_delta": 2.0,
+      "material_gain_signal": false,
+      "codex_skill_increment": "testable_increment",
+      "workbuddy_skill_increment": "no_increment",
+      "cross_host_stability": "no_increment",
+      "overall_result": "no_increment",
+      "workbuddy_terminal_status": "failed_during_cli_output_finalization"
+    }
+  ],
+  "current_claim_boundary": {
+    "stable_superiority_proven": false,
+    "cross_host_stability_proven": false,
+    "latest_result": "Open Bandit produced one Codex-host testable OPE evaluability candidate, but no validated or cross-host-stable increment."
   }
 }

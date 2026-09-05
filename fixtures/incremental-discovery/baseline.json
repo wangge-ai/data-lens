@@ -1,0 +1,21 @@
+{
+  "contract_version": "data-lens-incremental-discovery-baseline/0.1",
+  "decision_question": "这套方法真正依赖什么增长逻辑，最关键的问题是什么？",
+  "native_first_pass": {
+    "baseline_id": "E0",
+    "capture_mode": "pre_engine_first_pass",
+    "captured_before_engine": true,
+    "core_problem": "借鉴成熟内容提高早期测试速度，但复制会增加长期内容风险。",
+    "mechanism": "复用内容结构减少探索成本，因此可以更快发布并获得反馈。",
+    "evidence_refs": ["E-GEN-2"],
+    "competing_explanations": ["结果主要来自商品需求，而不是内容结构。"],
+    "predictions": ["解决复制风险后，早期互动仍能稳定筛选长期赢家。"],
+    "retained_findings": [
+      "复用内容结构能减少探索成本。",
+      "复制会增加长期内容风险。",
+      "商品需求可能比内容结构更能解释结果。"
+    ],
+    "decision": "保留结构借鉴，但改用自有素材。",
+    "unresolved_observations": ["为什么部分早期高指标商品没有持续自然成交。"]
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "contract_version": "data-lens-hypothesis-experiment/0.1",
+  "experiment_id": "OPENING-RANDOMIZED-1",
+  "decision_question": "这批文章中有哪些值得用于下一轮内容实验的结构模式？",
+  "mode": "atomic_claims",
+  "target_mechanism": "结果前置开头影响继续阅读率",
+  "data_source": {
+    "path": "synthetic-experiment-data.json",
+    "format": "json",
+    "granularity": "daily",
+    "time_field": "publish_date"
+  },
+  "data_evidence_refs": ["E-DATA-1"],
+  "analysis_binding": {
+    "analysis_layer": "causal",
+    "target": "两种开头的平均继续阅读率差",
+    "validation_type": "randomized_experiment",
+    "method": "group_mean_difference",
+    "component_id": "OPENING-EFFECT",
+    "design_evidence_refs": ["E-DESIGN-1", "E-ASSIGNMENT-CHECK-1"],
+    "outcome_field": "read_through",
+    "identification_strategy": "randomized",
+    "intervention": "结果前置开头",
+    "comparator": "步骤前置开头",
+    "group_field": "opening_arm",
+    "intervention_value": "result_first",
+    "comparator_value": "steps_first"
+  },
+  "declared_dimensions": ["path"],
+  "components": [
+    {
+      "component_id": "OPENING-EFFECT",
+      "dimension": "path",
+      "statement": "随机结果前置组的继续阅读率高于步骤前置组",
+      "required_granularity": "daily",
+      "evaluation_window": {"start": "2026-01-01", "end": "2026-01-04"},
+      "measurement": {
+        "kind": "group_mean_difference",
+        "field": "read_through",
+        "group_field": "opening_arm",
+        "group_a": "result_first",
+        "group_b": "steps_first"
+      },
+      "expectation": {"operator": "gt", "value": 0}
+    }
+  ]
+}

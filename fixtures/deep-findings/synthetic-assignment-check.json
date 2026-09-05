@@ -1,0 +1,23 @@
+{
+  "binding": {
+    "design": {
+      "analysis_unit": "article",
+      "outcome_name": "继续阅读率",
+      "outcome_field": "read_through",
+      "intervention": "结果前置开头",
+      "comparator": "步骤前置开头",
+      "group_field": "opening_arm",
+      "intervention_value": "result_first",
+      "comparator_value": "steps_first",
+      "assignment_mechanism": "randomized",
+      "identification_strategy": "randomized",
+      "estimand": "两种开头的平均继续阅读率差",
+      "estimator": "group_mean_difference"
+    },
+    "check": {
+      "check_name": "assignment_integrity",
+      "status": "supported",
+      "observed_units_per_arm": {"result_first": 2, "steps_first": 2}
+    }
+  }
+}

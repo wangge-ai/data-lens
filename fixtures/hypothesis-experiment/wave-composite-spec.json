@@ -1,0 +1,60 @@
+{
+  "contract_version": "data-lens-hypothesis-experiment/0.1",
+  "experiment_id": "WAVE-COMPOSITE-1",
+  "decision_question": "复合行情判断的方向、时间、点位、路径和失效条件分别怎样？",
+  "mode": "atomic_claims",
+  "data_source": {
+    "path": "wave-composite.csv",
+    "format": "csv",
+    "granularity": "daily",
+    "time_field": "date"
+  },
+  "declared_dimensions": ["direction", "time", "point", "path", "invalidation"],
+  "components": [
+    {
+      "component_id": "DIR-JULY",
+      "dimension": "direction",
+      "statement": "7 月最终收涨",
+      "required_granularity": "daily",
+      "evaluation_window": {"start": "2026-07-01", "end": "2026-07-31"},
+      "measurement": {"kind": "period_pct_change", "field": "close"},
+      "expectation": {"operator": "gt", "value": 0}
+    },
+    {
+      "component_id": "TIME-LOW",
+      "dimension": "time",
+      "statement": "低点出现在 7 月中旬",
+      "required_granularity": "daily",
+      "evaluation_window": {"start": "2026-07-01", "end": "2026-07-31"},
+      "measurement": {"kind": "date_of_min", "field": "close"},
+      "expectation": {"operator": "between", "value": ["2026-07-15", "2026-07-20"]}
+    },
+    {
+      "component_id": "POINT-DD",
+      "dimension": "point",
+      "statement": "期间最大回撤不超过 10%",
+      "required_granularity": "daily",
+      "evaluation_window": {"start": "2026-07-01", "end": "2026-07-31"},
+      "measurement": {"kind": "max_drawdown_pct", "field": "close"},
+      "expectation": {"operator": "gte", "value": -10}
+    },
+    {
+      "component_id": "PATH-HIGH",
+      "dimension": "path",
+      "statement": "月内高点在 7 月 20 日至 25 日出现",
+      "required_granularity": "daily",
+      "evaluation_window": {"start": "2026-07-01", "end": "2026-07-31"},
+      "measurement": {"kind": "date_of_max", "field": "close"},
+      "expectation": {"operator": "between", "value": ["2026-07-20", "2026-07-25"]}
+    },
+    {
+      "component_id": "INVALID-DD",
+      "dimension": "invalidation",
+      "statement": "最大回撤超过 10% 时原判断失效",
+      "required_granularity": "daily",
+      "evaluation_window": {"start": "2026-07-01", "end": "2026-07-31"},
+      "measurement": {"kind": "max_drawdown_pct", "field": "close"},
+      "expectation": {"operator": "lt", "value": -10}
+    }
+  ]
+}

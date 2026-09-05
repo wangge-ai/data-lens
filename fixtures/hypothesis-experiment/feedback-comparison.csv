@@ -1,0 +1,7 @@
+date,feedback_origin,retention_30d
+2026-01-01,natural,0.80
+2026-01-02,natural,0.70
+2026-01-03,natural,0.75
+2026-01-01,shaped,0.20
+2026-01-02,shaped,0.30
+2026-01-03,shaped,0.25

@@ -20,6 +20,8 @@ class CognitiveEngineAssetTests(unittest.TestCase):
         registered = {item["method_id"]: item for item in registry["methods"]}
         self.assertIn("data_lens.cognitive_engine_router", registered)
         self.assertIn("data_lens.contradiction_analysis", registered)
+        self.assertIn("data_lens.incremental_discovery", registered)
+        self.assertIn("data_lens.hypothesis_falsification", registered)
         validation = validate_repository(ROOT)
         self.assertTrue(validation["valid"], validation["errors"])
 

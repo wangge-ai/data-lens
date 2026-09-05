@@ -1,0 +1,21 @@
+{
+  "design": "randomized",
+  "binding": {
+    "analysis_unit": "article",
+    "outcome_name": "继续阅读率",
+    "outcome_field": "read_through",
+    "intervention": "结果前置开头",
+    "comparator": "步骤前置开头",
+    "group_field": "opening_arm",
+    "intervention_value": "result_first",
+    "comparator_value": "steps_first",
+    "assignment_mechanism": "randomized",
+    "identification_strategy": "randomized",
+    "estimand": "两种开头的平均继续阅读率差",
+    "estimator": "group_mean_difference"
+  },
+  "assignment_unit": "article",
+  "arms": ["结果前置", "步骤前置"],
+  "planned_units_per_arm": 2,
+  "allocation_source": "synthetic regression fixture"
+}

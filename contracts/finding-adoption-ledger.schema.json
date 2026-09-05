@@ -9,6 +9,37 @@
     "decision_question": {"type": "string", "minLength": 1},
     "request": {"type": "object"},
     "scope_gate": {"type": "object"},
+    "deep_analysis_plan": {
+      "type": "object",
+      "required": ["provided", "claim_permissions"],
+      "properties": {
+        "provided": {"type": "boolean"},
+        "contract_version": {
+          "type": ["string", "null"],
+          "enum": ["data-lens-deep-analysis-plan/0.1", null]
+        },
+        "claim_permissions": {
+          "type": "object",
+          "properties": {
+            "descriptive": {"enum": ["allowed", "conditional", "blocked", "not_requested"]},
+            "association": {"enum": ["allowed", "conditional", "blocked", "not_requested"]},
+            "mechanism_hypothesis": {"enum": ["allowed", "conditional", "blocked", "not_requested"]},
+            "predictive": {"enum": ["allowed", "conditional", "blocked", "not_requested"]},
+            "causal": {"enum": ["allowed", "conditional", "blocked", "not_requested"]},
+            "decision": {"enum": ["allowed", "conditional", "blocked", "not_requested"]}
+          }
+        },
+        "analysis_targets": {"type": "object"},
+        "source_question_spec": {"type": ["object", "null"]},
+        "recompiled": {"type": "boolean"},
+        "analysis_layers": {"type": "object"},
+        "required_layers": {"type": "array", "items": {"type": "string"}},
+        "required_layers_ready": {"type": "boolean"},
+        "required_result_layers": {"type": "array", "items": {"type": "string"}},
+        "executed_result_layers": {"type": "array", "items": {"type": "string"}},
+        "required_result_layers_executed": {"type": "boolean"}
+      }
+    },
     "evidence_index": {"type": "object"},
     "candidates": {"type": "array"},
     "summary": {
