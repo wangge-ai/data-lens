@@ -1494,7 +1494,8 @@ class CorpusLensRegressionTests(unittest.TestCase):
             analysis["presentation"]["toc_groups"] = []
             rendered = render_html(analysis, "body{}")
         self.assertIn("几个容易混淆的区别", rendered)
-        self.assertIn("接下来怎么改", rendered)
+        self.assertIn("第一步先做什么", rendered)
+        self.assertNotIn("接下来怎么改", rendered)
         self.assertIn("看到的情况", rendered)
         self.assertIn("另一种可能", rendered)
         self.assertIn("需要注意", rendered)

@@ -177,7 +177,7 @@ def route_copy(route: str) -> dict[str, str]:
         "findings_title": "最值得记住的判断",
         "comparisons_title": "几个容易混淆的区别",
         "comparisons_note": "把用途相近但角色不同的资料放在一起，才能看见真正可复用的部分。",
-        "actions_title": "接下来怎么改",
+        "actions_title": "第一步先做什么",
     }
 
 
@@ -334,10 +334,10 @@ def render_overview_charts(data: dict[str, Any]) -> str:
     )
     if not coverage_rows and not finding_rows and not priority_items:
         return ""
-    priority_panel = f'<div class="priority-mini">{priority_items}</div>' if priority_items else '<p class="overview-empty">当前版本尚未给行动分级。</p>'
+    priority_panel = f'<div class="priority-mini">{priority_items}</div>' if priority_items else '<p class="overview-empty">这次只保留一个优先动作。</p>'
     return (
         '<section class="overview-visuals" aria-label="报告数据概览">'
-        '<header><h2>一眼看清这次分析</h2><p>这里显示的是实际审阅规模、结论性质和行动优先级，不把文件数量当成共识。</p></header>'
+        '<header><h2>一眼看清这次分析</h2><p>这里显示实际读了多少、得出了什么，以及先做哪一步。</p></header>'
         '<div class="overview-grid">'
         f'<article><h3>实际审阅的证据</h3><ol class="bar-list">{"".join(coverage_rows)}</ol></article>'
         f'<article><h3>结论由什么组成</h3><ol class="bar-list">{"".join(finding_rows)}</ol></article>'
@@ -540,7 +540,7 @@ def render_html(data: dict[str, Any], css: str, run_context: dict[str, Any] | No
     <section class="report-section" id="findings"><header class="section-heading"><div><h2>{esc(labels.get("findings", copy["findings_title"]))}</h2><p>每个判断都说明看到的情况、可能原因、另一种可能和需要注意的范围。</p></div></header><div class="finding-list">{render_findings(data.get("findings", []), evidence_map, recommendation_map)}</div></section>
     <section class="report-section" id="comparisons"><header class="section-heading"><div><h2>{esc(labels.get("comparisons", copy["comparisons_title"]))}</h2><p>{esc(copy["comparisons_note"])}</p></div></header><div class="comparison-list">{render_comparisons(data.get("comparisons", []), evidence_map)}</div></section>
     {render_analysis_sections(sections, evidence_map)}
-    <section class="report-section" id="actions"><header class="section-heading"><div><h2>{esc(labels.get("actions", copy["actions_title"]))}</h2><p>把结论变成可执行的小实验，每次只验证一两个关键变化。</p></div></header><div class="action-list">{render_recommendations(data.get("recommendations", []), finding_map)}</div></section>
+    <section class="report-section" id="actions"><header class="section-heading"><div><h2>{esc(labels.get("actions", copy["actions_title"]))}</h2><p>只保留当前最值得先做的一步，并说明看什么结果。</p></div></header><div class="action-list">{render_recommendations(data.get("recommendations", []), finding_map)}</div></section>
     {experiment_section}
     <aside class="reader-caveats" aria-label="阅读提醒"><h2>{esc(labels.get("caveats", "看结论前要注意"))}</h2><div class="limit-grid"><div><h3>这份数据暂时不能证明什么</h3><ul>{limitations}</ul></div><div><h3>以后补什么数据会更准确</h3><ul>{questions}</ul></div></div></aside>
   </main></div><footer class="report-footer">{esc(presentation.get("footer_note", "根据现有资料形成，下一轮用真实结果继续验证"))}</footer>
