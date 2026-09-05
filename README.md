@@ -154,7 +154,7 @@ WorkBuddy/CodeBuddy 官方格式只要求一份包含 `name`、`description` 和
 python scripts/package_workbuddy_skill.py
 ```
 
-然后导入 `dist/` 中生成的完整 ZIP。分发包只包含运行能力和公开自测材料；不要只复制 `SKILL.md`，否则执行脚本、方法说明和报告模板不会一起安装。结构检查只能证明包能读、脚本能启动，真实分析能力仍要在 WorkBuddy 里用一份新资料实际调用。
+然后导入 `dist/` 中生成的完整 ZIP。压缩包根目录直接包含 `SKILL.md`，符合 WorkBuddy 的上传要求；分发包只包含运行能力和公开自测材料。不要只复制 `SKILL.md`，否则执行脚本、方法说明和报告模板不会一起安装。结构检查只能证明包能读、脚本能启动，真实分析能力仍要在 WorkBuddy 里用一份新资料实际调用。
 
 官方说明：[WorkBuddy/CodeBuddy Skills](https://cloud.tencent.com/document/product/1831/134516)。
 

@@ -154,7 +154,7 @@ Before importing through the WorkBuddy UI, run:
 python scripts/package_workbuddy_skill.py
 ```
 
-Import the complete ZIP from `dist/`. The distribution contains only runtime capabilities and public smoke material. Copying only `SKILL.md` omits execution scripts, method references, and the report template. A structural package check proves only that the package can load and its scripts can start; real analytical behavior still requires a fresh task inside WorkBuddy.
+Import the complete ZIP from `dist/`. Its archive root contains `SKILL.md`, as required by WorkBuddy's uploader, and the distribution contains only runtime capabilities and public smoke material. Copying only `SKILL.md` omits execution scripts, method references, and the report template. A structural package check proves only that the package can load and its scripts can start; real analytical behavior still requires a fresh task inside WorkBuddy.
 
 Official reference: [WorkBuddy/CodeBuddy Skills](https://cloud.tencent.com/document/product/1831/134516).
 

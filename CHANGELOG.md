@@ -2,6 +2,7 @@
 
 ## 0.9.0-dev.12 — 2026-09-05
 
+- Fixed the WorkBuddy ZIP layout so `SKILL.md` is at the archive root, matching the real uploader's import requirement rather than the repository-style `skills/data-lens/` layout.
 - Corrected WorkBuddy/CodeBuddy packaging against the current official Skill format: the archive now keeps the canonical `name`/`description` frontmatter unchanged, omits historical evaluation and repository-maintainer material, and verifies capability discovery plus the 115-item host-neutral core suite after clean extraction.
 - Reworked the public README into concise reader-facing Chinese and English guides, simplified HTML/Markdown report labels, removed internal trace sections from the reader Markdown, and added three previews built only from synthetic data.
 - Expanded the Chinese and English public guides into a complete product entry point covering host/Skill responsibilities, six distinctive capabilities, eight evidence-dependent analysis layers, deliverables, dependency behavior, installation, and direct invocation examples; simplified the Codex UI prompt to the same reader language.

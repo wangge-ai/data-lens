@@ -93,7 +93,7 @@ def package_workbuddy_skill(root: Path, output: Path, *, force: bool = False) ->
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(source_files):
             relative = path.relative_to(root)
-            archive_name = PurePosixPath("skills", "data-lens", *relative.parts).as_posix()
+            archive_name = PurePosixPath(*relative.parts).as_posix()
             if relative == Path("SKILL.md"):
                 archive.writestr(archive_name, packaged_skill.encode("utf-8"))
             else:
@@ -101,14 +101,14 @@ def package_workbuddy_skill(root: Path, output: Path, *, force: bool = False) ->
 
     with zipfile.ZipFile(output) as archive:
         names = set(archive.namelist())
-        required_entry = "skills/data-lens/SKILL.md"
+        required_entry = "SKILL.md"
         if required_entry not in names:
             raise RuntimeError(f"package is missing {required_entry}")
     return {
         "output": str(output),
         "version": version,
         "file_count": len(source_files),
-        "skill_entry": "skills/data-lens/SKILL.md",
+        "skill_entry": "SKILL.md",
     }
 
 
