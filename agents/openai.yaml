@@ -1,7 +1,7 @@
 interface:
   display_name: "Data Lens"
-  short_description: "从多源资料中发现关键问题、跨来源关系、竞争机制与可验证行动"
-  default_prompt: "使用 $data-lens 分析这些资料：先保留宿主的自然分析，只核验会改变判断的证据；终稿用已有 E0 保留表做一次轻量对照，恢复遗漏、保留一个第一停止点，并只向读者呈现实质结论与行动。"
+  short_description: "把多源资料变成有证据、有边界、可行动的分析结果"
+  default_prompt: "使用 $data-lens 分析这些资料：先确认范围和分析单位，再找关键事实、跨来源关系、反例与其他解释，最后给我一份读者能直接理解的报告和一个最优先行动。"
 
 policy:
   allow_implicit_invocation: true
