@@ -2,6 +2,7 @@
 
 ## 0.9.0-dev.12 — 2026-09-05
 
+- Reworked the public README into concise reader-facing Chinese and English guides, simplified HTML/Markdown report labels, removed internal trace sections from the reader Markdown, and added three previews built only from synthetic data.
 - 修复 Python 3.10 下 WorkBuddy 打包兼容性：在标准库尚无 `tomllib` 时，仅对当前 `[project].authors` 元数据使用受限回退解析，并加入对应回归测试。
 
 - Repaired the two-case forward-test failures without adding a new gate: ordinary evidence-mode runs now reuse the existing E0 retention table for one advisory final-reader pass, and repeated-table guidance explicitly preserves reconciliation chains, later regime shifts, and decision-relevant data-quality exclusions.

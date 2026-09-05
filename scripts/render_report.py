@@ -78,7 +78,7 @@ def esc(value: Any) -> str:
 
 
 def human_class(value: str | None) -> str:
-    return {"fact": "事实", "calculation": "数据结果", "inference": "分析判断", "hypothesis": "待验证"}.get(value or "", value or "分析判断")
+    return {"fact": "已确认", "calculation": "计算结果", "inference": "当前判断", "hypothesis": "待验证"}.get(value or "", value or "当前判断")
 
 
 def human_confidence(value: str | None) -> str:
@@ -316,7 +316,7 @@ def render_overview_charts(data: dict[str, Any]) -> str:
             '<li><span>' + esc(human_lane(str(item.get("lane") or ""))) + '</span>'
             f'<div class="bar-track"><i style="width:{width}%"></i></div><b>{esc(item.get("items"))}</b></li>'
         )
-    classification_order = [("fact", "事实"), ("calculation", "数据结果"), ("inference", "分析判断"), ("hypothesis", "待验证")]
+    classification_order = [("fact", "已确认"), ("calculation", "计算结果"), ("inference", "当前判断"), ("hypothesis", "待验证")]
     finding_counts = {key: sum(1 for item in data.get("findings", []) if item.get("classification") == key) for key, _ in classification_order}
     finding_total = max(1, sum(finding_counts.values()))
     finding_rows = []
@@ -355,11 +355,11 @@ def render_findings(items: list[dict[str, Any]], evidence_map: dict[str, dict[st
             f'<span class="record-index">发现 {index:02d}</span><div><h3>{esc(item.get("title"))}</h3>'
             f'<div class="inline-meta"><span class="class-tag">{esc(human_class(item.get("classification")))}</span><span>把握程度：{esc(human_confidence(item.get("confidence")))}</span></div></div></header>'
             '<div class="reasoning-grid">'
-            f'<div class="reason-row fact-row"><h4>事实</h4><p>{esc(item.get("fact"))}</p></div>'
-            f'<div class="reason-row"><h4>证据</h4><div>{evidence_refs(item.get("evidence_ids", []), evidence_map)}</div></div>'
-            f'<div class="reason-row"><h4>解释</h4><p>{esc(item.get("explanation"))}</p></div>'
-            f'<div class="reason-row caution-row"><h4>反例</h4><ul>{join_text(item.get("counterexamples", []))}</ul></div>'
-            f'<div class="reason-row boundary-row"><h4>边界</h4><ul>{join_text(item.get("boundaries", []))}</ul></div>'
+            f'<div class="reason-row fact-row"><h4>看到的情况</h4><p>{esc(item.get("fact"))}</p></div>'
+            f'<div class="reason-row"><h4>依据</h4><div>{evidence_refs(item.get("evidence_ids", []), evidence_map)}</div></div>'
+            f'<div class="reason-row"><h4>可能原因</h4><p>{esc(item.get("explanation"))}</p></div>'
+            f'<div class="reason-row caution-row"><h4>另一种可能</h4><ul>{join_text(item.get("counterexamples", []))}</ul></div>'
+            f'<div class="reason-row boundary-row"><h4>需要注意</h4><ul>{join_text(item.get("boundaries", []))}</ul></div>'
             f'<div class="reason-row action-row"><h4>接下来做</h4><p>{"；".join(esc(recommendation_map.get(v, {}).get("title", v)) for v in item.get("recommendation_ids", [])) or "暂时不需要单独行动"}</p></div>'
             '</div></article>'
         )
@@ -377,9 +377,9 @@ def render_comparisons(items: list[dict[str, Any]], evidence_map: dict[str, dict
             '<article class="comparison-record">'
             f'<div class="record-kicker">对照 {index:02d}</div><h3>{esc(item.get("title"))}</h3>'
             f'<div class="comparison-grid">{"".join(sides)}</div>'
-            f'<div class="comparison-note"><strong>解释</strong><p>{esc(item.get("interpretation"))}</p></div>'
-            f'<div class="comparison-note caution"><strong>反例</strong><p>{esc(item.get("counterexample"))}</p></div>'
-            f'<div class="comparison-note boundary"><strong>边界</strong><p>{esc(item.get("boundary"))}</p></div>'
+            f'<div class="comparison-note"><strong>怎么看</strong><p>{esc(item.get("interpretation"))}</p></div>'
+            f'<div class="comparison-note caution"><strong>另一种可能</strong><p>{esc(item.get("counterexample"))}</p></div>'
+            f'<div class="comparison-note boundary"><strong>需要注意</strong><p>{esc(item.get("boundary"))}</p></div>'
             f'<div class="inline-meta">{evidence_refs(item.get("evidence_ids", []), evidence_map)}</div></article>'
         )
     return "".join(rendered)
@@ -433,7 +433,7 @@ def render_analysis_sections(items: list[dict[str, Any]], evidence_map: dict[str
                 '<article class="analysis-item">'
                 f'<h3>{esc(item.get("title"))}</h3><p>{esc(item.get("body"))}</p>'
                 f'<div class="inline-meta">{evidence_refs(item.get("evidence_ids", []), evidence_map)}</div>'
-                + (f'<p class="item-boundary"><strong>边界：</strong>{esc(boundary)}</p>' if boundary else "")
+                + (f'<p class="item-boundary"><strong>需要注意：</strong>{esc(boundary)}</p>' if boundary else "")
                 + '</article>'
             )
         gallery = render_gallery(section.get("gallery", []))
@@ -537,7 +537,7 @@ def render_html(data: dict[str, Any], css: str, run_context: dict[str, Any] | No
     {render_overview_charts(data)}
     <section class="report-section" id="scope"><header class="section-heading"><div><h2>{esc(labels.get("scope", "这份分析用了哪些资料"))}</h2><p>{esc(copy["scope_note"])}</p></div></header><dl class="scope-list">{format_scope(data.get("scope", {}))}</dl></section>
     {coverage_section}
-    <section class="report-section" id="findings"><header class="section-heading"><div><h2>{esc(labels.get("findings", copy["findings_title"]))}</h2><p>每个判断都同时保留实际表现、可能原因、反例和适用边界。</p></div></header><div class="finding-list">{render_findings(data.get("findings", []), evidence_map, recommendation_map)}</div></section>
+    <section class="report-section" id="findings"><header class="section-heading"><div><h2>{esc(labels.get("findings", copy["findings_title"]))}</h2><p>每个判断都说明看到的情况、可能原因、另一种可能和需要注意的范围。</p></div></header><div class="finding-list">{render_findings(data.get("findings", []), evidence_map, recommendation_map)}</div></section>
     <section class="report-section" id="comparisons"><header class="section-heading"><div><h2>{esc(labels.get("comparisons", copy["comparisons_title"]))}</h2><p>{esc(copy["comparisons_note"])}</p></div></header><div class="comparison-list">{render_comparisons(data.get("comparisons", []), evidence_map)}</div></section>
     {render_analysis_sections(sections, evidence_map)}
     <section class="report-section" id="actions"><header class="section-heading"><div><h2>{esc(labels.get("actions", copy["actions_title"]))}</h2><p>把结论变成可执行的小实验，每次只验证一两个关键变化。</p></div></header><div class="action-list">{render_recommendations(data.get("recommendations", []), finding_map)}</div></section>
@@ -547,11 +547,24 @@ def render_html(data: dict[str, Any], css: str, run_context: dict[str, Any] | No
 </article></body></html>'''
 
 
-def md_evidence(ids: list[str]) -> str:
-    return "、".join(ids) if ids else "无"
+def md_labels(ids: list[str], labels: dict[str, str]) -> str:
+    values = [labels.get(value, value) for value in ids]
+    return "、".join(values) if values else "无"
 
 
 def render_markdown(data: dict[str, Any]) -> str:
+    evidence_labels = {
+        str(item.get("id")): str(item.get("label") or item.get("note") or "依据")
+        for item in data.get("evidence", [])
+    }
+    finding_labels = {
+        str(item.get("id")): str(item.get("title") or "相关判断")
+        for item in data.get("findings", [])
+    }
+    recommendation_labels = {
+        str(item.get("id")): str(item.get("title") or "下一步")
+        for item in data.get("recommendations", [])
+    }
     completion_status = str(data.get("completion_status") or "")
     completion_note = str((data.get("presentation") or {}).get("completion_note") or "").strip()
     completion_copy = {
@@ -561,53 +574,53 @@ def render_markdown(data: dict[str, Any]) -> str:
     lines = [f'# {data.get("title", "分析报告")}', "", str(data.get("subtitle", "")), ""]
     if completion_copy:
         lines.extend([f'> {completion_copy}', ""])
-    lines.extend([f'- 分析方法：{human_route(str(data.get("route") or ""))}', f'- 分析深度：{human_depth(str(data.get("report_depth") or ""))}', "", "## 结论摘要", ""])
+    lines.extend(["## 先看结论", ""])
     for item in data.get("executive_summary", []):
-        lines.extend([f'### {item.get("title")}', "", str(item.get("summary", "")), "", f'> 分类：{human_class(item.get("classification"))}；证据：{md_evidence(item.get("evidence_ids", []))}', ""])
+        lines.extend([f'### {item.get("title")}', "", str(item.get("summary", "")), "", f'> {human_class(item.get("classification"))}；依据：{md_labels(item.get("evidence_ids", []), evidence_labels)}', ""])
     scope = data.get("scope", {})
-    lines.extend(["## 口径与覆盖", "", f'- 决策问题：{scope.get("decision_question", "")}', f'- 资料范围：{scope.get("corpus_summary", "")}', f'- 时间范围：{scope.get("time_range", "")}', f'- 比较单位：{human_analysis_unit(str(scope.get("comparison_unit") or ""))}', f'- 纳入口径：{scope.get("eligibility_rule", "")}', ""])
+    lines.extend(["## 这次看了什么", "", f'- 想回答的问题：{scope.get("decision_question", "")}', f'- 使用的资料：{scope.get("corpus_summary", "")}', f'- 时间范围：{scope.get("time_range", "")}', f'- 怎么比较：{human_analysis_unit(str(scope.get("comparison_unit") or ""))}', f'- 哪些记录会纳入：{scope.get("eligibility_rule", "")}', ""])
     if data.get("analysis_units"):
         units = data["analysis_units"]
         lines.extend([
-            "### 分析单元契约", "",
-            f'- 来源容器单位：{human_analysis_unit(str(units.get("source_container_unit") or ""))}',
-            f'- 真正分析单位：{human_analysis_unit(str(units.get("analysis_unit") or ""))}（{human_unit_status(str(units.get("unit_status") or ""))}）',
-            f'- 来源容器数：{units.get("source_container_count", "")}',
-            f'- 可纳入 / 已选择 / 已观察 / 缺失：{units.get("eligible_count", "")} / {units.get("selected_count", "")} / {units.get("observed_count", "")} / {units.get("missing_count", "")}',
-            f'- 去重规则：{units.get("deduplication_rule", "")}',
-            f'- 版本规则：{units.get("version_rule", "")}',
-            f'- 分组规则：{units.get("grouping_rule", "")}', "",
+            "### 怎么计数", "",
+            f'- 每份来源按什么计：{human_analysis_unit(str(units.get("source_container_unit") or ""))}',
+            f'- 真正比较什么：{human_analysis_unit(str(units.get("analysis_unit") or ""))}（{human_unit_status(str(units.get("unit_status") or ""))}）',
+            f'- 来源数量：{units.get("source_container_count", "")}',
+            f'- 可用 / 已选 / 实际看到 / 缺失：{units.get("eligible_count", "")} / {units.get("selected_count", "")} / {units.get("observed_count", "")} / {units.get("missing_count", "")}',
+            f'- 重复内容怎么处理：{units.get("deduplication_rule", "")}',
+            f'- 多个版本怎么处理：{units.get("version_rule", "")}',
+            f'- 怎么分组：{units.get("grouping_rule", "")}', "",
         ])
     if data.get("sampling") or data.get("evidence_coverage"):
         sampling = data.get("sampling", {})
-        lines.extend(["## 样本与证据覆盖", "", f'- 抽样策略：{sampling.get("strategy", "")}', f'- 纳入规则：{sampling.get("inclusion_rule", "")}', f'- 候选数：{sampling.get("eligible_count", "")}', f'- 实际分析数：{sampling.get("selected_count", "")}', "", "### 样本偏差", ""])
+        lines.extend(["## 这次实际看了哪些资料", "", f'- 怎么选择：{sampling.get("strategy", "")}', f'- 选择规则：{sampling.get("inclusion_rule", "")}', f'- 可用数量：{sampling.get("eligible_count", "")}', f'- 实际查看：{sampling.get("selected_count", "")}', "", "### 可能遗漏", ""])
         lines.extend([f'- {value}' for value in sampling.get("bias_warnings", [])])
-        lines.extend(["", "### 各类证据能说明什么", ""])
+        lines.extend(["", "### 每类资料能说明什么", ""])
         for item in data.get("evidence_coverage", []):
             lines.extend([f'#### {human_lane(str(item.get("lane", "")))} · {human_coverage_status(str(item.get("status", "")))}', "", f'- 数量：{item.get("items")}', f'- 处理状态：{"、".join(human_processing_state(str(state)) for state in item.get("processing_states", []))}', f'- 能说明：{item.get("proves")}', f'- 不能说明：{item.get("cannot_prove")}', ""])
     if data.get("metric_definitions"):
-        lines.extend(["## 指标定义", ""])
+        lines.extend(["## 指标怎么算", ""])
         for item in data.get("metric_definitions", []):
             lines.extend([
                 f'### {item.get("label")}', "",
-                f'- 指标类型：{human_metric_type(str(item.get("metric_type") or ""))}', f'- 单位：{item.get("unit")}',
-                f'- 分子：{item.get("numerator")}', f'- 分母：{item.get("denominator")}',
-                f'- 纳入条件：{item.get("eligibility_rule")}', f'- 缺失处理：{item.get("missing_policy")}',
-                f'- 排除：{"；".join(item.get("exclusions", []))}', f'- 来源证据：{item.get("source_lane")}',
-                f'- 算法版本：{item.get("algorithm_version")}', f'- 有效条件：{"；".join(item.get("validity_conditions", []))}',
-                f'- 解释边界：{item.get("interpretation_limit")}', "",
+                f'- 类型：{human_metric_type(str(item.get("metric_type") or ""))}', f'- 单位：{item.get("unit")}',
+                f'- 计算方式：{item.get("numerator")} ÷ {item.get("denominator")}',
+                f'- 哪些记录会纳入：{item.get("eligibility_rule")}', f'- 缺失怎么处理：{item.get("missing_policy")}',
+                f'- 哪些记录会排除：{"；".join(item.get("exclusions", []))}',
+                f'- 什么时候可用：{"；".join(item.get("validity_conditions", []))}',
+                f'- 不能直接当成：{item.get("interpretation_limit")}', "",
             ])
-    lines.extend(["## 完整发现", ""])
+    lines.extend(["## 最值得记住的判断", ""])
     for item in data.get("findings", []):
-        lines.extend([f'### {item.get("title")}', "", f'**事实**：{item.get("fact")}', "", f'**证据**：{md_evidence(item.get("evidence_ids", []))}', "", f'**解释**：{item.get("explanation")}', "", "**反例**", ""])
+        lines.extend([f'### {item.get("title")}', "", f'**看到的情况**：{item.get("fact")}', "", f'**依据**：{md_labels(item.get("evidence_ids", []), evidence_labels)}', "", f'**可能原因**：{item.get("explanation")}', "", "**另一种可能**", ""])
         lines.extend([f'- {value}' for value in item.get("counterexamples", [])])
-        lines.extend(["", "**边界**", ""])
+        lines.extend(["", "**需要注意**", ""])
         lines.extend([f'- {value}' for value in item.get("boundaries", [])])
-        lines.extend(["", f'**关联动作**：{md_evidence(item.get("recommendation_ids", []))}', ""])
-    lines.extend(["## 成对比较", ""])
+        lines.extend(["", f'**接下来做**：{md_labels(item.get("recommendation_ids", []), recommendation_labels)}', ""])
+    lines.extend(["## 关键对比", ""])
     for item in data.get("comparisons", []):
         left, right = item.get("left", {}), item.get("right", {})
-        lines.extend([f'### {item.get("title")}', "", f'- **{left.get("label")} · {left.get("value")}**：{left.get("body")}', f'- **{right.get("label")} · {right.get("value")}**：{right.get("body")}', "", f'**解释**：{item.get("interpretation")}', "", f'**反例**：{item.get("counterexample")}', "", f'**边界**：{item.get("boundary")}', "", f'**证据**：{md_evidence(item.get("evidence_ids", []))}', ""])
+        lines.extend([f'### {item.get("title")}', "", f'- **{left.get("label")} · {left.get("value")}**：{left.get("body")}', f'- **{right.get("label")} · {right.get("value")}**：{right.get("body")}', "", f'**怎么看**：{item.get("interpretation")}', "", f'**另一种可能**：{item.get("counterexample")}', "", f'**需要注意**：{item.get("boundary")}', "", f'**依据**：{md_labels(item.get("evidence_ids", []), evidence_labels)}', ""])
     for section in data.get("analysis_sections", []):
         lines.extend([f'## {section.get("title")}', "", str(section.get("summary", "")), ""])
         for visual in section.get("gallery", []):
@@ -620,30 +633,21 @@ def render_markdown(data: dict[str, Any]) -> str:
                 lines.append("| " + " | ".join(str(row.get(c.get("key"), "—")).replace("|", "\\|") for c in columns) + " |")
             lines.append("")
         for item in section.get("items", []):
-            lines.extend([f'### {item.get("title")}', "", str(item.get("body", "")), "", f'**证据**：{md_evidence(item.get("evidence_ids", []))}', ""])
+            lines.extend([f'### {item.get("title")}', "", str(item.get("body", "")), "", f'**依据**：{md_labels(item.get("evidence_ids", []), evidence_labels)}', ""])
             if item.get("boundary"):
-                lines.extend([f'**边界**：{item.get("boundary")}', ""])
-    lines.extend(["## 下一步动作", ""])
+                lines.extend([f'**需要注意**：{item.get("boundary")}', ""])
+    lines.extend(["## 接下来做什么", ""])
     for item in data.get("recommendations", []):
         priority = {"now": "现在做", "next": "接着做", "later": "以后做"}.get(item.get("priority"), "未分级")
-        lines.extend([f'### {item.get("title")}', "", str(item.get("action", "")), "", f'- 优先级：{priority}', f'- 理由：{item.get("rationale")}', f'- 关联发现：{md_evidence(item.get("finding_ids", []))}', f'- 验证指标：{item.get("validation_metric")}', f'- 周期：{item.get("timebox")}', f'- 风险：{"；".join(item.get("risks", []))}', f'- 未达预期：{item.get("fallback")}', ""])
+        lines.extend([f'### {item.get("title")}', "", str(item.get("action", "")), "", f'- 什么时候做：{priority}', f'- 为什么：{item.get("rationale")}', f'- 对应判断：{md_labels(item.get("finding_ids", []), finding_labels)}', f'- 看什么结果：{item.get("validation_metric")}', f'- 观察多久：{item.get("timebox")}', f'- 可能问题：{"；".join(item.get("risks", []))}', f'- 如果效果不理想：{item.get("fallback")}', ""])
     if data.get("experiments"):
-        lines.extend(["## 下一轮验证实验", ""])
+        lines.extend(["## 怎么验证这个判断", ""])
         for item in data.get("experiments", []):
-            lines.extend([f'### {item.get("title")}', "", str(item.get("question", "")), "", f'- 假设：{item.get("hypothesis")}', f'- 只改变：{item.get("changed_variable")}', f'- 对照设计：{item.get("comparison_design")}', f'- 基线：{item.get("baseline")}', f'- 主指标：{item.get("primary_metric")}', f'- 保护指标：{"；".join(item.get("guardrail_metrics", []))}', f'- 观察周期：{item.get("measurement_window")}', f'- 最少样本：{item.get("minimum_sample")}', f'- 判定规则：{item.get("decision_rule")}', f'- 需要数据：{"；".join(item.get("required_data", []))}', f'- 干扰因素：{"；".join(item.get("confounders", []))}', f'- 停止条件：{item.get("stop_condition")}', f'- 关联发现：{md_evidence(item.get("linked_finding_ids", []))}', ""])
-    lines.extend(["## 限制与未知", "", "### 证据限制", ""])
+            lines.extend([f'### {item.get("title")}', "", str(item.get("question", "")), "", f'- 当前判断：{item.get("hypothesis")}', f'- 只改变什么：{item.get("changed_variable")}', f'- 怎么比较：{item.get("comparison_design")}', f'- 原来的做法：{item.get("baseline")}', f'- 主要看：{item.get("primary_metric")}', f'- 同时留意：{"；".join(item.get("guardrail_metrics", []))}', f'- 观察多久：{item.get("measurement_window")}', f'- 最少需要：{item.get("minimum_sample")}', f'- 怎么判断：{item.get("decision_rule")}', f'- 需要记录：{"；".join(item.get("required_data", []))}', f'- 可能影响结果：{"；".join(item.get("confounders", []))}', f'- 什么时候停止：{item.get("stop_condition")}', f'- 对应判断：{md_labels(item.get("linked_finding_ids", []), finding_labels)}', ""])
+    lines.extend(["## 看结论前要注意", "", "### 这次不能说明什么", ""])
     lines.extend([f'- {item}' for item in data.get("limitations", [])])
-    lines.extend(["", "### 目前还不能回答的问题", ""])
+    lines.extend(["", "### 补什么资料会更准确", ""])
     lines.extend([f'- {item}' for item in data.get("unanswered_questions", [])])
-    lines.extend(["", "## 证据索引", ""])
-    for item in data.get("evidence", []):
-        lines.append(f'- **{item.get("id")}** {item.get("label") or item.get("note")} — lane=`{item.get("lane", "")}` · review=`{item.get("review_status", "")}` · family=`{item.get("source_family", "")}` · `{item.get("source_path")}` · `{json.dumps(item.get("locator", {}), ensure_ascii=False)}`')
-    if data.get("analysis_checklist"):
-        lines.extend(["", "## 路线完整性检查（内部）", ""])
-        for item in data.get("analysis_checklist", []):
-            lines.append(
-                f'- **{item.get("id")} · {item.get("status")}** {item.get("question")}；证据：{md_evidence(item.get("evidence_ids", []))}；发现：{md_evidence(item.get("finding_ids", []))}；{item.get("note")}'
-            )
     return "\n".join(lines).strip() + "\n"
 
 

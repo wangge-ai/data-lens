@@ -1222,13 +1222,15 @@ class CorpusLensRegressionTests(unittest.TestCase):
         self.assertIn("真正按什么比较", rendered_html)
         self.assertIn("文章（已确认）", rendered_html)
         self.assertIn("代理指标", rendered_html)
-        self.assertIn("分析单元契约", rendered_md)
-        self.assertIn("- 分析方法：同一作者内容拆解", rendered_md)
-        self.assertIn("- 分析深度：快速试验", rendered_md)
-        self.assertIn("- 真正分析单位：文章（已确认）", rendered_md)
+        self.assertIn("怎么计数", rendered_md)
+        self.assertIn("- 真正比较什么：文章（已确认）", rendered_md)
         self.assertIn("- 处理状态：已解析", rendered_md)
-        self.assertIn("- 指标类型：代理指标", rendered_md)
-        self.assertIn("路线完整性检查（内部）", rendered_md)
+        self.assertIn("- 类型：代理指标", rendered_md)
+        self.assertIn("最值得记住的判断", rendered_md)
+        self.assertNotIn("分析单元契约", rendered_md)
+        self.assertNotIn("路线完整性检查", rendered_md)
+        self.assertNotIn("证据索引", rendered_md)
+        self.assertNotIn(str(source), rendered_md)
         self.assertNotIn("analysis_checklist", rendered_html)
 
     def test_v22_mixed_route_passes_full_depth_contract(self) -> None:
@@ -1493,6 +1495,12 @@ class CorpusLensRegressionTests(unittest.TestCase):
             rendered = render_html(analysis, "body{}")
         self.assertIn("几个容易混淆的区别", rendered)
         self.assertIn("接下来怎么改", rendered)
+        self.assertIn("看到的情况", rendered)
+        self.assertIn("另一种可能", rendered)
+        self.assertIn("需要注意", rendered)
+        self.assertNotIn("<h4>事实</h4>", rendered)
+        self.assertNotIn("<h4>反例</h4>", rendered)
+        self.assertNotIn("<h4>边界</h4>", rendered)
         self.assertNotIn("三组文章对比", rendered)
 
     def test_source_graph_keeps_technical_and_semantic_relations_separate(self) -> None:
@@ -1722,7 +1730,7 @@ class CorpusLensRegressionTests(unittest.TestCase):
             self.assertIn('class="completion-status status-preliminary"', html_text)
             self.assertIn("阶段性分析", html_text)
             self.assertIn("一眼看清这次分析", html_text)
-            self.assertIn("- 优先级：现在做", markdown_text)
+            self.assertIn("- 什么时候做：现在做", markdown_text)
             del analysis["recommendations"][0]["priority"]
             result = validate_analysis(analysis)
             self.assertIn("recommendation_priority_invalid:R01:None", result["errors"])
