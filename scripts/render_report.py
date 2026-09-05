@@ -360,7 +360,6 @@ def render_findings(items: list[dict[str, Any]], evidence_map: dict[str, dict[st
             f'<div class="reason-row"><h4>可能原因</h4><p>{esc(item.get("explanation"))}</p></div>'
             f'<div class="reason-row caution-row"><h4>另一种可能</h4><ul>{join_text(item.get("counterexamples", []))}</ul></div>'
             f'<div class="reason-row boundary-row"><h4>需要注意</h4><ul>{join_text(item.get("boundaries", []))}</ul></div>'
-            f'<div class="reason-row action-row"><h4>接下来做</h4><p>{"；".join(esc(recommendation_map.get(v, {}).get("title", v)) for v in item.get("recommendation_ids", [])) or "暂时不需要单独行动"}</p></div>'
             '</div></article>'
         )
     return "".join(rendered)
@@ -616,7 +615,6 @@ def render_markdown(data: dict[str, Any]) -> str:
         lines.extend([f'- {value}' for value in item.get("counterexamples", [])])
         lines.extend(["", "**需要注意**", ""])
         lines.extend([f'- {value}' for value in item.get("boundaries", [])])
-        lines.extend(["", f'**接下来做**：{md_labels(item.get("recommendation_ids", []), recommendation_labels)}', ""])
     lines.extend(["## 关键对比", ""])
     for item in data.get("comparisons", []):
         left, right = item.get("left", {}), item.get("right", {})

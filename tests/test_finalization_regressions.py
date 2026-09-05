@@ -15,6 +15,7 @@ if str(SCRIPTS) not in sys.path:
 from analyze_operational_facts import analyze  # noqa: E402
 from baseline_preservation import build_final_review  # noqa: E402
 from build_run_manifest import build_manifest  # noqa: E402
+from render_report import render_findings  # noqa: E402
 from validate_run_manifest import validate_manifest  # noqa: E402
 
 
@@ -115,6 +116,40 @@ class CoverageAndFinalizationRegressionTests(unittest.TestCase):
         self.assertEqual(len(review["required_findings"]), 2)
         self.assertEqual(len(review["deterministic_coverage_claims"]), 2)
         self.assertIn("exactly one first stop point", "\n".join(review["instructions"]))
+
+    def test_advisory_review_reads_standard_nested_baseline_contract(self) -> None:
+        review = build_final_review(
+            {
+                "contract_version": "data-lens-incremental-discovery-baseline/0.1",
+                "decision_question": "为什么结果反复归零？",
+                "native_first_pass": {
+                    "retained_findings": ["保留普通解释", "保留关键反例"]
+                },
+            }
+        )
+        self.assertEqual(
+            [item["text"] for item in review["required_findings"]],
+            ["保留普通解释", "保留关键反例"],
+        )
+
+    def test_finding_keeps_action_link_out_of_reader_record(self) -> None:
+        rendered = render_findings(
+            [
+                {
+                    "title": "一个判断",
+                    "fact": "一个事实",
+                    "explanation": "一个解释",
+                    "counterexamples": ["一个反例"],
+                    "boundaries": ["一个边界"],
+                    "evidence_ids": [],
+                    "recommendation_ids": ["R01"],
+                }
+            ],
+            {},
+            {"R01": {"title": "第一步：只做一次验证"}},
+        )
+        self.assertNotIn("接下来做", rendered)
+        self.assertNotIn("第一步：只做一次验证", rendered)
 
 
 class CanonicalManifestBuilderRegressionTests(unittest.TestCase):

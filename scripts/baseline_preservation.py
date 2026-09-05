@@ -14,6 +14,9 @@ VALID_RETENTION_STATUSES = {"retained", "strengthened", "superseded"}
 def baseline_finding_items(snapshot: Any) -> list[dict[str, str]]:
     if not isinstance(snapshot, dict):
         return []
+    nested = snapshot.get("native_first_pass")
+    if isinstance(nested, dict):
+        snapshot = nested
     rows = snapshot.get("retained_findings")
     if not isinstance(rows, list):
         return []
